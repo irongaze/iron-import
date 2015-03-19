@@ -1,0 +1,70 @@
+= GEM: iron-import
+
+Written by Rob Morris @ Irongaze Consulting LLC (http://irongaze.com)
+
+== DESCRIPTION
+
+Simple, reliable tabular data import.
+
+This gem provides a set of classes to support automating import of tabular data from 
+CSV, XLS or XLSX files.  Provides help in defining columns, auto-detecting column 
+order, pre-parsing data, and error/warning tracking.
+
+The Roo/Spreadsheet gems do a great job of providing general purpose spreadsheet reading.
+However, using them with unreliable user submitted data requires a lot of error checking,
+monkeying with data coercion, etc.  At Irongaze, we do a lot of work with growing
+businesses, where Excel files are the lingua franca for all kinds of uses.  This gem 
+attempts to extract years of experience building one-off importers into a simple library 
+for rapid import coding.
+
+This is NOT a general-purpose tool for reading spreadsheets.  If you want access to 
+cell styling, reading underlying formulas, etc., you will be better served building
+a custom importer based on Roo.  But if you're looking to take an uploaded CSV file,
+validate and coerce values, then write each row to a database, all the while tracking
+any warnings and errors encountered... well, this is the library for you!
+
+IMPORTANT NOTE: this gem is in flux as we work to define the best possible abstraction
+for the task.  Breaking changes will be noted by increases in the second-level version,
+ie 0.5.0 and 0.5.1 will be compatible, but 0.6.0 will not.
+
+== SAMPLE USAGE
+
+    # Define our importer, with two columns.  The importer will look for a row containing
+    # "name" and "description" (case insensitively) and automatically determine column
+    # order and starting row of the data.
+    importer = Importer.build do
+      column :name
+      column :description
+    end
+    
+    # Import the provided file row-by-row if importing succeeds, automatically
+    # using the proper library to read CSV data.  This same code would work
+    # with XLS or XLSX files with no changes to the code.
+    if importer.import('/tmp/source.csv')
+      importer.process do |row|
+        puts row[:name] + ' = ' + row[:description]
+      end
+    end    
+
+== REQUIREMENTS
+
+Depends on the iron-extensions and iron-dsl gems, and optionally requires the roo gem to support XLS and 
+XLSX file import and parsing.  Without roo, all you get is CSV.
+
+Requires RSpec and roo to build/test.
+
+== INSTALLATION
+
+To install, simply run:
+
+    sudo gem install iron-import
+    
+RVM users can skip the sudo:
+  
+    gem install iron-import
+
+Then use
+
+    require 'iron/import'
+    
+to require the library code.

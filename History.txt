@@ -1,0 +1,12 @@
+== 0.5.0 / 2015-02-XX
+
+* Initial revision
+* Support for CSV, XLS and XLSX importing
+* Multiple sheet support
+* Automatic header and start-of-data detection
+* Value coercion to :string, :integer, :float, :date, and :cents
+* Custom parsing of raw cell values
+* Custom validation of cell values
+* Conditional row filtering
+* Error and warning aggregation, by sheet/row as appropriate
+* Automatic stream-to-file conversion where needed by underlying libs
