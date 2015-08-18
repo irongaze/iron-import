@@ -6,19 +6,34 @@ class Importer
    
     def initialize(importer)
       super(importer, :csv)
-    end
-   
-    def load_stream(stream)
-      text = stream.read
-      encoding = @importer.encoding || 'UTF-8'
-      raw_rows = CSV.parse(text, :encoding => "#{encoding}:UTF-8")
-      @importer.default_sheet.parse_raw_data(raw_rows)
+      supports_file!
+      supports_stream!
     end
     
-    def load_file(path)
-      encoding = @importer.encoding || 'UTF-8'
-      raw_rows = CSV.read(path, :encoding => "#{encoding}:UTF-8")
-      @importer.default_sheet.parse_raw_data(raw_rows)
+    def init_source(mode, source)
+      if mode == :stream
+        # For streams, we just read 'em in and parse 'em
+        text = source.read
+        encoding = @importer.encoding || 'UTF-8'
+        @raw_rows = CSV.parse(text, :encoding => "#{encoding}:UTF-8")
+        true
+        
+      elsif mode == :file
+        # Files have a different path
+        encoding = @importer.encoding || 'UTF-8'
+        @raw_rows = CSV.read(source, :encoding => "#{encoding}:UTF-8")
+        true
+        
+      else
+        @importer.add_error("Unsupported CSV mode: #{mode}")
+        false
+      end
+    end
+   
+    # Normally, we'd check the key and return the proper data, but for CSV files, 
+    # there's only one "sheet"
+    def load_raw_sheet(key)
+      @raw_rows
     end
     
   end

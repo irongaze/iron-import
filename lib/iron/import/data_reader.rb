@@ -14,6 +14,24 @@ class Importer
       end
     end
 
+    # Implement our automatic reader selection, based on the import source
+    def self.for_source(importer, source)
+      data = nil
+      if is_stream?(source)
+        data = DataReader::for_stream(importer, source)
+        unless data
+          importer.add_error("Unable to find format handler for stream")
+        end
+      else
+        data = DataReader::for_path(importer, source)
+        unless data
+          importer.add_error("Unable to find format handler for file #{source}")
+        end
+      end
+      data
+    end
+
+    # Factory method to build a reader from an explicit format selector
     def self.for_format(importer, format)
       case format
       when :csv
@@ -29,6 +47,7 @@ class Importer
       end
     end
     
+    # Figure out which format to use for a given path based on file name
     def self.for_path(importer, path)
       format = path.to_s.extract(/\.(csv|xlsx?)\z/i)
       if format
@@ -39,11 +58,19 @@ class Importer
       end
     end
     
+    # Figure out which format to use based on a stream's source file info
     def self.for_stream(importer, stream)
       path = path_from_stream(stream)
       for_path(importer, path)
     end
     
+    # Attempt to determine if the given source is a stream
+    def self.is_stream?(source)
+      # For now, just assume anything that has a #read method is a stream, in
+      # duck-type fashion
+      source.respond_to?(:read)
+    end
+
     # Try to find the original file name for the given stream,
     # as in the case where a file is uploaded to Rails and we're dealing with an
     # ActionDispatch::Http::UploadedFile.
@@ -60,16 +87,40 @@ class Importer
     def initialize(importer, format)
       @importer = importer
       @format = format
-      @multisheet = true
+      @supports = []
     end
 
+    def supports_stream!
+      @supports << :stream
+    end
+    
+    def supports_file!
+      @supports << :file
+    end
+    
+    def supports?(mode)
+      @supports.include?(mode)
+    end
+    
+    def supports_file?
+      supports?(:file)
+    end
+    
+    def supports_stream?
+      supports?(:stream)
+    end
+    
+    # Core data reader method.  Takes a given input source (either a stream or
+    # a file path) and attempts to load it.  Returns true if successful, false
+    # if not.  If false, there will be one or more errors explaining what went
+    # wrong.
     def load(path_or_stream)
       # Figure out what we've been passed, and handle it
-      if path_or_stream.respond_to?(:read)
+      if self.class.is_stream?(path_or_stream)
         # We have a stream (open file, upload, whatever)
-        if respond_to?(:load_stream)
+        if supports_stream?
           # Stream loader defined, run it
-          load_stream(path_or_stream)
+          load_sheets(:stream, path_or_stream)
         else
           # Write to temp file, as some of our readers only read physical files, annoyingly
           file = Tempfile.new(['importer', ".#{format}"])
@@ -77,7 +128,7 @@ class Importer
           begin
             file.write path_or_stream.read
             file.close
-            load_file(file.path)
+            load_sheets(:file, file.path)
           ensure
             file.close
             file.unlink
@@ -86,21 +137,56 @@ class Importer
         
       elsif path_or_stream.is_a?(String)
         # Assume it's a path
-        if respond_to?(:load_file)
-          # We're all set, load up the given path
-          load_file(path_or_stream)
+        if File.exist?(path_or_stream)
+          if supports_file?
+            # We're all set, load up the given path
+            load_sheets(:file, path_or_stream)
+          else
+            # No file handler, so open the file and run the stream processor
+            file = File.open(path_or_stream, 'rb')
+            load_sheets(:stream, file)
+          end
         else
-          # No file handler, so open the file and run the stream processor
-          file = File.open(path_or_stream, 'rb')
-          load_stream(file)
+          @importer.add_error("Unable to locate source file #{path_or_stream}")
         end
         
       else
-        raise "Unable to load data: #{path_or_stream.inspect}"
+        @importer.add_error("Unable to load data source - not a file path or stream: #{path_or_stream.inspect}")
       end
       
       # Return our status
       !@importer.has_errors?
+    end
+    
+    # Load up the sheets in the correct mode
+    def load_sheets(mode, source)
+      # Let our derived classes open the file, etc. as they need
+      if init_source(mode, source)
+        # Once the source is set, run through each defined sheet, pass it to
+        # our sheet loader, and have the sheet parse it out.
+        @importer.sheets.values.each do |sheet|
+          res = load_raw_sheet(sheet)
+          if res === false
+            # D'oh.
+          else
+            # Tell the sheet to parse the data
+            sheet.parse_raw_data(res)
+          end
+        end
+      end
+    end
+    
+    # Override this method in derived classes to set up
+    # the given source in the given mode
+    def init_source(mode, source)
+      raise "Unimplemented method #init_source in data reader #{self.class.name}"
+    end
+    
+    # Override this method in derived classes to take the given sheet definition,
+    # find that sheet in the input source, and read out the raw (unparsed) rows
+    # as an array of arrays.  Return false if the sheet cannot be loaded.
+    def load_raw_sheet(sheet)
+      raise "Unimplemented method #load_raw_sheet in data reader #{self.class.name}"
     end
     
     # Provides default value parsing/coersion for all derived data readers.  Attempts to be clever and

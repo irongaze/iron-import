@@ -1,0 +1,4 @@
+A000    Cholera due to Vibrio cholerae 01, biovar cholerae
+A001    Cholera due to Vibrio cholerae 01, biovar eltor
+A009    Cholera, unspecified
+A0100   Typhoid fever, unspecified

@@ -87,7 +87,7 @@ describe Importer::DataReader do
   end
   
   it 'should build an instance based on stream' do
-    Importer::DataReader.for_stream(@importer, mock(original_filename: "nanodrop.xlsx", content_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")).should be_a(Importer::XlsxReader)
+    Importer::DataReader.for_stream(@importer, double(original_filename: "nanodrop.xlsx", content_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")).should be_a(Importer::XlsxReader)
   end
   
 end

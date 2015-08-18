@@ -25,7 +25,7 @@ any warnings and errors encountered... well, this is the library for you!
 
 IMPORTANT NOTE: this gem is in flux as we work to define the best possible abstraction
 for the task.  Breaking changes will be noted by increases in the second-level version,
-ie 0.5.0 and 0.5.1 will be compatible, but 0.6.0 will not.
+ie 0.5.0 and 0.5.1 will be compatible, but 0.6.0 will not (i.e. we follow semantic versioning).
 
 == SAMPLE USAGE
 
@@ -65,6 +65,6 @@ RVM users can skip the sudo:
 
 Then use
 
-    require 'iron/import'
+    require 'iron-import'
     
 to require the library code.

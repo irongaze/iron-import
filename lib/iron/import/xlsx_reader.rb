@@ -1,58 +1,45 @@
 class Importer
   
+  # Uses the Roo gem to read in .xlsx files
   class XlsxReader < DataReader
     
     def initialize(importer)
       super(importer, :xlsx)
+      supports_file!
     end
     
-    def load_file(path)
-      spreadsheet = Roo::Excelx.new(path, :file_warning => :ignore)
-      if spreadsheet
-        # Get our list of sheet definitions, and run all the sheets in the spreadsheet
-        remaining_sheets = @importer.sheets.values
-        spreadsheet.sheets.each_with_index do |name, index|
-          # Look for a sheet definition that matches this sheet's name/index
-          sheet = remaining_sheets.detect {|s| s.match_sheet?(name, index) }
-          if sheet
-            # Remove from our list of remaining sheets
-            remaining_sheets.delete(sheet)
-            # Extract our raw data
-            raw_rows = []
-            spreadsheet.sheet(name).each_with_index do |row, line|
-              raw_rows << row
-            end
-            # Let the sheet sort it out
-            sheet.parse_raw_data(raw_rows)
-          end
-        end
-        return true
+    def init_source(mode, source)
+      if mode == :file
+        @spreadsheet = Roo::Excelx.new(source, :file_warning => :ignore)
+        true
       else
-        @importer.add_error("Unable to read ExcelX file at path #{path}")
-        return false
+        @importer.add_error("Unsupported XLSX mode: #{mode}")
+        false
       end
-      
     rescue Exception => e
-      @importer.add_error("Error reading file #{path}: #{e} @ #{e.backtrace.first}")
+      @importer.add_error("Error reading file #{source}: #{e}")
       false
     end
     
-    private
-    
-    def load_raw_rows(sheet, raw_rows)
-      # Figure out where our columns are and where our data starts
-      column_map = sheet.find_header(raw_rows[0...5])
-      start_row = sheet.data.start_row
-      
-      # Run all the raw rows and convert them to Row instances, making notes of errors along the way...
-      if !@importer.has_errors?
-        raw_rows.each_with_index do |raw, index|
-          line = index + 1
-          if line >= start_row
-            row = sheet.add_row(line, raw)
+    def load_raw_sheet(sheet)
+      @spreadsheet.sheets.each_with_index do |name, index|
+        # See if this sheet's name or index matches the requested sheet definition
+        if sheet.match_sheet?(name, index)
+          # Extract our raw data
+          raw_rows = []
+          @spreadsheet.sheet(name).each_with_index do |row, line|
+            raw_rows << row
           end
+          return raw_rows
         end
       end
+      @importer.add_error("Unable to find sheet #{sheet}")
+      return false
+      
+    rescue Exception => e
+      # Not sure why we'd get here, but we strive for error-freedom here, yessir.
+      @importer.add_error("Error loading sheet #{sheet}: #{e}")
+      false
     end
     
   end

@@ -1,3 +1,9 @@
+== 0.6.0 / 2015-08-17
+
+* Refactored readers to allow for custom format reading
+* Vastly improved internal and user-facing comments
+* Improved error logging, replaced some exceptions with errors
+
 == 0.5.0 / 2015-02-XX
 
 * Initial revision
