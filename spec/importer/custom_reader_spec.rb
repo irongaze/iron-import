@@ -43,4 +43,18 @@ describe Importer::CustomReader do
     ]
   end
   
+  it 'should allow adding errors in custom blocks' do
+    importer = Importer.build do
+      headerless!
+      column :code
+      column :desc
+
+      on_file do |source, sheet|
+        add_error('Unable to read cause no reader')
+      end
+    end
+    importer.import(SpecHelper.sample_path('icd10-custom.txt'))
+    importer.error_summary.should include('Unable to read cause no reader')
+  end
+  
 end

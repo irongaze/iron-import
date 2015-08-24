@@ -7,8 +7,8 @@ Written by Rob Morris @ Irongaze Consulting LLC (http://irongaze.com)
 Simple, reliable tabular data import.
 
 This gem provides a set of classes to support automating import of tabular data from 
-CSV, XLS or XLSX files.  Provides help in defining columns, auto-detecting column 
-order, pre-parsing data, and error/warning tracking.
+CSV, XLS and XLSX files, or custom formats via a simple block reader.  Provides help 
+in defining columns, auto-detecting column order, pre-parsing data, and error/warning tracking.
 
 The Roo/Spreadsheet gems do a great job of providing general purpose spreadsheet reading.
 However, using them with unreliable user submitted data requires a lot of error checking,

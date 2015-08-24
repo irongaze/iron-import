@@ -1,3 +1,7 @@
+== 0.6.1 / 2015-08-24
+
+* Better handling for nil return value in custom format readers
+
 == 0.6.0 / 2015-08-17
 
 * Refactored readers to allow for custom format reading

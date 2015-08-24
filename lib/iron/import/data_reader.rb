@@ -257,6 +257,14 @@ class Importer
       end
     end
     
+    def add_error(*args)
+      @importer.add_error(*args)
+    end
+    
+    def add_warning(*args)
+      @importer.add_warning(*args)
+    end
+    
   end
   
 end

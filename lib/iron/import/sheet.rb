@@ -141,6 +141,8 @@ class Importer
     
     # Add a new row to our stash
     def add_row(line, raw_data)
+      # Gracefully handle custom parsers that return nil for a row's data
+      raw_data ||= []
       # Add the row
       row = Row.new(self, line)
       
@@ -150,8 +152,10 @@ class Importer
         index = col.data.index
         raw_val = raw_data[index]
         if col.parse
+          # Use custom parser if this row has one
           val = col.parse_value(row, raw_val)
         else
+          # Otherwise use our standard parser
           val = @importer.data.parse_value(raw_val, col.type)
         end
         values[col.key] = val
@@ -234,6 +238,14 @@ class Importer
       else
         @id.to_s.downcase == name.downcase
       end
+    end
+
+    def add_error(msg)
+      @importer.add_error(self, msg)
+    end
+    
+    def add_warning(msg)
+      @importer.add_warning(self, msg)
     end
 
     def to_s

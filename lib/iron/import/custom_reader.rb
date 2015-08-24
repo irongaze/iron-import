@@ -26,11 +26,16 @@ class Importer
     
     def load_raw_sheet(sheet)
       reader = @readers[@mode]
-      reader.call(@source, sheet)
+      res = DslProxy.exec(self, @source, sheet, &reader)
+      if !res.is_a?(Array) || @importer.has_errors?
+        false
+      else
+        res
+      end
       
     rescue Exception => e
       # Catch any exceptions thrown and note them with helpful stacktrace info for debugging custom readers
-      @importer.add_error("Error in custom reader when loading sheet #{sheet}: #{e} @ #{e.backtrace.first}")
+      @importer.add_error("Error in custom reader when loading #{sheet}: #{e} @ #{e.backtrace.first}")
       false
     end
     
