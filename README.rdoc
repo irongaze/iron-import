@@ -7,8 +7,8 @@ Written by Rob Morris @ Irongaze Consulting LLC (http://irongaze.com)
 Simple, reliable tabular data import.
 
 This gem provides a set of classes to support automating import of tabular data from 
-CSV, XLS and XLSX files, or custom formats via a simple block reader.  Provides help 
-in defining columns, auto-detecting column order, pre-parsing data, and error/warning tracking.
+CSV, HTML, XLS and XLSX files, or custom formats via a simple block reader.  Provides help 
+in defining columns, auto-detecting column order, pre-parsing data, and error tracking.
 
 The Roo/Spreadsheet gems do a great job of providing general purpose spreadsheet reading.
 However, using them with unreliable user submitted data requires a lot of error checking,
@@ -21,37 +21,64 @@ This is NOT a general-purpose tool for reading spreadsheets.  If you want access
 cell styling, reading underlying formulas, etc., you will be better served building
 a custom importer based on Roo.  But if you're looking to take an uploaded CSV file,
 validate and coerce values, then write each row to a database, all the while tracking
-any warnings and errors encountered... well, this is the library for you!
+any errors encountered... well, this is the library for you!
 
 IMPORTANT NOTE: this gem is in flux as we work to define the best possible abstraction
-for the task.  Breaking changes will be noted by increases in the second-level version,
+for the task.  Breaking changes will be noted by increases in the minor version,
 ie 0.5.0 and 0.5.1 will be compatible, but 0.6.0 will not (i.e. we follow semantic versioning).
 
 == SAMPLE USAGE
 
-    # Define our importer, with two columns.  The importer will look for a row containing
-    # "name" and "description" (case insensitively) and automatically determine column
+    # Define our importer, with three columns.  The importer will look for a row containing
+    # "name"/"product", "description" and "price" (case insensitively) and automatically determine column
     # order and starting row of the data.
     importer = Importer.build do
-      column :name
-      column :description
+      column :name do
+        # Column order and start row are auto-detected
+        header /(name|product)/i
+      end
+      column :description do
+        # Columns can do custom parsing
+        parse do |raw_val|
+          raw_val.to_s.strip
+        end
+        # And per-row validation
+        validate do |parsed_val|
+          raise "Invalid description" unless parsed_val.length > 5
+        end
+      end
+      column :price do
+        # Built in type conversion handles common cases
+        type :cents
+      end
+      
+      # Need to skip rows?  Use a filter!
+      filter do |row|
+        row[:price] != 0 && row[:name] != 'Sample'
+      end
     end
     
-    # Import the provided file row-by-row if importing succeeds, automatically
+    # Import the provided file row-by-row (if importing succeeds), automatically
     # using the proper library to read CSV data.  This same code would work
     # with XLS or XLSX files with no changes to the code.
-    if importer.import('/tmp/source.csv')
-      importer.process do |row|
-        puts row[:name] + ' = ' + row[:description]
-      end
+    importer.import('/tmp/source.csv') do |row|
+      puts row[:name] + ' = ' + row[:description]
     end    
+
+    # Check for errors and do the right thing:
+    importer.on_error do
+      puts "Error: " + error_summary
+    end
 
 == REQUIREMENTS
 
-Depends on the iron-extensions and iron-dsl gems, and optionally requires the roo gem to support XLS and 
-XLSX file import and parsing.  Without roo, all you get is CSV.
+Depends on the iron-extensions and iron-dsl gems for CSV and custom import formats.
 
-Requires RSpec and roo to build/test.
+Optionally requires the roo gem to support XLS and XLSX import and parsing.  
+
+Optionally requires the nokogiri gem to support HTML import and parsing.  
+
+Requires RSpec, nokogiri and roo to build/test.
 
 == INSTALLATION
 

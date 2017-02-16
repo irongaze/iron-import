@@ -21,7 +21,7 @@ describe Importer::CsvReader do
       end
     end
     importer.import(SpecHelper.sample_path('simple.csv')).should be_true
-    importer.default_sheet.dump.should == [
+    importer.to_a.should == [
       {:number => 123, :string => 'Abc', :date => Date.new(1977,5,13), :cost => 899},
       {:number => nil, :string => nil, :date => nil, :cost => nil},
       {:number => 5, :string => 'String with end spaces', :date => Date.new(2004,2,1), :cost => 1000}

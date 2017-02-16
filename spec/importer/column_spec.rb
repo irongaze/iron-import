@@ -2,17 +2,16 @@ describe Importer::Column do
 
   before do
     @importer = Importer.new
-    @sheet = @importer.default_sheet
-    @col = Importer::Column.new(@sheet, :test)
-    @row = Importer::Row.new(@sheet, 1)
+    @col = Importer::Column.new(@importer, :test)
+    @row = Importer::Row.new(@importer, 1)
   end
 
   it 'should respond to build' do
     @col.should respond_to(:build)
     @col.build do
-      required!
+      type :cents
     end
-    @col.required?.should be_true
+    @col.type.should == :cents
   end
   
   it 'should convert position strings to indexes' do

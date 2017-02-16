@@ -15,7 +15,7 @@ describe Importer::DataReader do
       55 => 55,
       3.0 => 3
     }.each_pair do |val, res|
-      @reader.parse_value(val, :integer).should == res
+      @reader.parse_value(val, :integer).should === res
     end
   end
   
@@ -29,7 +29,7 @@ describe Importer::DataReader do
       55 => 55.0,
       '3' => 3.0
     }.each_pair do |val, res|
-      @reader.parse_value(val, :float).should == res
+      @reader.parse_value(val, :float).should === res
     end
   end
   
@@ -41,13 +41,14 @@ describe Importer::DataReader do
       255 => '255',
       -1.5 => '-1.5'
     }.each_pair do |val, res|
-      @reader.parse_value(val, :string).should == res
+      @reader.parse_value(val, :string).should === res
     end
   end
   
   it 'should parse cents' do
     {
       '$123.00' => 12300,
+      '9.95' => 995,
       '5' => 500,
       '0.5' => 50,
       '-95' => -9500,
@@ -55,7 +56,7 @@ describe Importer::DataReader do
       1.0 => 100,
       1.25 => 125
     }.each_pair do |val, res|
-      @reader.parse_value(val, :cents).should == res
+      @reader.parse_value(val, :cents).should === res
     end
   end
   
@@ -68,7 +69,7 @@ describe Importer::DataReader do
       '5/10/2014, 10:28:07 PM' => Date.new(2014,5,10),
       Date.new(2000,4,1) => Date.new(2000,4,1)
     }.each_pair do |val, res|
-      @reader.parse_value(val, :date).should == res
+      @reader.parse_value(val, :date).should === res
     end
   end
   

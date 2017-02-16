@@ -24,19 +24,25 @@ class Importer
       @source = source
     end
     
-    def load_raw_sheet(sheet)
+    def load_raw(scopes, &block)
+      # Default to just running one scope passing nil
+      if scopes.nil? || scopes.empty?
+        scopes = [nil]
+      end
+      
+      # Get the proper reader
       reader = @readers[@mode]
-      res = DslProxy.exec(self, @source, sheet, &reader)
-      if !res.is_a?(Array) || @importer.has_errors?
-        false
-      else
-        res
+      scopes.each do |scope|
+        rows = DslProxy.exec(self, @source, scope, &reader)
+        if rows.is_a?(Array) && !@importer.has_errors?
+          found = block.call(rows)
+          break if found
+        end
       end
       
     rescue Exception => e
       # Catch any exceptions thrown and note them with helpful stacktrace info for debugging custom readers
-      @importer.add_error("Error in custom reader when loading #{sheet}: #{e} @ #{e.backtrace.first}")
-      false
+      add_error("Error in custom reader: #{e} @ #{e.backtrace.first}")
     end
     
   end

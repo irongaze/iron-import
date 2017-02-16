@@ -8,7 +8,7 @@ describe Importer::CustomReader do
     @importer.custom_reader.should be_nil
     @importer.build do
       headerless!
-      on_file do |source, sheet|
+      on_file do |source|
         []
       end
     end
@@ -20,14 +20,10 @@ describe Importer::CustomReader do
   it 'should load the ICD10 test document' do
     importer = Importer.build do
       headerless!
-      column :code do
-        required!
-      end
-      column :desc do
-        required!
-      end
+      column :code
+      column :desc
 
-      on_file do |source, sheet|
+      on_file do |source|
         File.readlines(source).collect do |line|
           line.extract(/([A-TV-Z][0-9][A-Z0-9]{1,5})\s+(.*)/)
         end
@@ -35,7 +31,7 @@ describe Importer::CustomReader do
     end
     importer.import(SpecHelper.sample_path('icd10-custom.txt'))
     importer.error_summary.should be_nil
-    importer.default_sheet.dump.should == [
+    importer.to_a.should == [
       {:code => 'A000', :desc => 'Cholera due to Vibrio cholerae 01, biovar cholerae'},
       {:code => 'A001', :desc => 'Cholera due to Vibrio cholerae 01, biovar eltor'},
       {:code => 'A009', :desc => 'Cholera, unspecified'},
@@ -49,7 +45,7 @@ describe Importer::CustomReader do
       column :code
       column :desc
 
-      on_file do |source, sheet|
+      on_file do |source|
         add_error('Unable to read cause no reader')
       end
     end

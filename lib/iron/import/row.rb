@@ -2,12 +2,12 @@ class Importer
   
   class Row
 
-    attr_reader :sheet, :line, :values
+    attr_reader :line, :values
     
-    def initialize(sheet, line, value_hash = nil)
-      @sheet = sheet
+    def initialize(importer, line, value_hash = nil)
+      @importer = importer
       @line = line
-      @values = value_hash
+      set_values(value_hash)
     end
     
     def set_values(value_hash)
@@ -15,8 +15,9 @@ class Importer
     end
     
     # True when all columns have a non-nil value, useful in filtering out junk 
-    # rows
+    # rows.  Pass in one or more keys to check only those keys for presence.
     def all?(*keys)
+      keys.flatten!
       if keys.any?
         # Check only the specified keys
         valid = true
@@ -33,25 +34,28 @@ class Importer
       end
     end
     
+    # True when all row columns have nil values.
     def empty?
       @values.values.all?(&:nil?)
     end
     
-    # Returns the value of a column
+    # Returns the value of a column.
     def [](column_key)
       @values[column_key]
     end
-    
+
+    # The row's name, e.g. 'Row 4'
     def to_s
       "Row #{@line}"
     end
     
-    def add_error(msg)
-      @sheet.importer.add_error(self, msg)
+    # This row's values as a hash of :column_key => <parsed + validated value>
+    def to_hash
+      @values.dup
     end
     
-    def add_warning(msg)
-      @sheet.importer.add_warning(self, msg)
+    def add_error(msg)
+      @importer.add_error(self, msg)
     end
     
   end

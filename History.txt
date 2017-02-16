@@ -1,3 +1,18 @@
+== 0.7.0 / 2017-02-16
+
+* Breaking Change: Removed multi-sheet support - use multiple importers instead
+* Breaking Change: Removed warnings as they were not being used
+* Breaking Change: Removed Column#required! due to bugginess and overlap with Column#validate
+* Add Importer#scope to allow narrowing the search to one or more sheets/tables when importing
+* Add new HtmlReader support to handle parsing HTML <table> rows
+* Modify Importer#import to support block mode combining #import and #process
+* Add Importer#import_string for handling explicit CSV/HTML/Custom text
+* Add Importer#on_error(&block) to allow inline conditional error handling
+* Improve error message when headers can't be detected to list missing headers
+* Change Importer#error_summary to group identical errors into single summary line
+* Improve :cents type column rounding to better handle floating point ugliness
+* Much improved test coverage and documentation
+
 == 0.6.1 / 2015-08-24
 
 * Better handling for nil return value in custom format readers
@@ -8,7 +23,7 @@
 * Vastly improved internal and user-facing comments
 * Improved error logging, replaced some exceptions with errors
 
-== 0.5.0 / 2015-02-XX
+== 0.5.0 / 2015-03-19
 
 * Initial revision
 * Support for CSV, XLS and XLSX importing

@@ -2,8 +2,7 @@ describe Importer::Row do
 
   before do
     @importer = Importer.new
-    @sheet = @importer.default_sheet
-    @row = Importer::Row.new(@sheet, 5)
+    @row = Importer::Row.new(@importer, 5)
   end
 
   it 'should store and retrieve values' do
@@ -32,6 +31,14 @@ describe Importer::Row do
   it 'should be empty? with zero values' do
     @row.set_values(:a => nil, :b => nil)
     @row.should be_empty
+  end
+  
+  it 'should not change when to_hash values are changed' do
+    @row.set_values(:a => 1, :b => 2)
+    hash = @row.to_hash
+    hash.should == {:a => 1, :b => 2}
+    hash.delete(:a)
+    @row[:a].should == 1
   end
 
 end

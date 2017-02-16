@@ -11,6 +11,16 @@ class Importer
     def self.verify_roo!
       if Gem::Specification.find_all_by_name('roo', '~> 1.13.0').empty?
         raise "You are attempting to use the iron-import gem to import an Excel file.  Doing so requires installing the roo gem, version 1.13.0 or later."
+      else
+        require 'roo'
+      end
+    end
+
+    def self.verify_nokogiri!
+      if Gem::Specification.find_all_by_name('nokogiri', '~> 1.6.0').empty?
+        raise "You are attempting to use the iron-import gem to import an HTML file.  Doing so requires installing the nokogiri gem, version 1.6.0 or later."
+      else
+        require 'nokogiri'
       end
     end
 
@@ -42,6 +52,9 @@ class Importer
       when :xlsx
         verify_roo!
         XlsxReader.new(importer)
+      when :html
+        verify_nokogiri!
+        HtmlReader.new(importer)
       else
         nil
       end
@@ -49,9 +62,11 @@ class Importer
     
     # Figure out which format to use for a given path based on file name
     def self.for_path(importer, path)
-      format = path.to_s.extract(/\.(csv|xlsx?)\z/i)
+      format = path.to_s.extract(/\.(csv|html?|xlsx?)\z/i)
       if format
-        format = format.downcase.to_sym
+        format = format.downcase
+        format = 'html' if format == 'htm'
+        format = format.to_sym
         for_format(importer, format)
       else
         nil
@@ -90,16 +105,16 @@ class Importer
       @supports = []
     end
 
+    def supports?(mode)
+      @supports.include?(mode)
+    end
+    
     def supports_stream!
       @supports << :stream
     end
     
     def supports_file!
       @supports << :file
-    end
-    
-    def supports?(mode)
-      @supports.include?(mode)
     end
     
     def supports_file?
@@ -114,13 +129,22 @@ class Importer
     # a file path) and attempts to load it.  Returns true if successful, false
     # if not.  If false, there will be one or more errors explaining what went
     # wrong.
-    def load(path_or_stream)
+    #
+    # Passed scopes are interpreted by each derived class as makes sense, but
+    # generally are used to target seaching in multi-block formats such as
+    # Excel spreadsheets (sheet name/index) or HTML documents (css selectors,
+    # xpath selectors).  If scopes is nil, all possible blocks will be checked.
+    #
+    # Each block is read in as raw data from the source, and passed to the
+    # given block as an array of arrays.  If the block returns true, processing
+    # is stopped and no further blocks will be checked.
+    def load(path_or_stream, scopes = nil, &block)
       # Figure out what we've been passed, and handle it
       if self.class.is_stream?(path_or_stream)
         # We have a stream (open file, upload, whatever)
         if supports_stream?
           # Stream loader defined, run it
-          load_sheets(:stream, path_or_stream)
+          load_each(:stream, path_or_stream, scopes, &block)
         else
           # Write to temp file, as some of our readers only read physical files, annoyingly
           file = Tempfile.new(['importer', ".#{format}"])
@@ -128,7 +152,7 @@ class Importer
           begin
             file.write path_or_stream.read
             file.close
-            load_sheets(:file, file.path)
+            load_each(:file, file.path, scopes, &block)
           ensure
             file.close
             file.unlink
@@ -140,18 +164,18 @@ class Importer
         if File.exist?(path_or_stream)
           if supports_file?
             # We're all set, load up the given path
-            load_sheets(:file, path_or_stream)
+            load_each(:file, path_or_stream, scopes, &block)
           else
             # No file handler, so open the file and run the stream processor
             file = File.open(path_or_stream, 'rb')
-            load_sheets(:stream, file)
+            load_each(:stream, file, scopes, &block)
           end
         else
-          @importer.add_error("Unable to locate source file #{path_or_stream}")
+          add_error("Unable to locate source file #{path_or_stream}")
         end
         
       else
-        @importer.add_error("Unable to load data source - not a file path or stream: #{path_or_stream.inspect}")
+        add_error("Unable to load data source - not a file path or stream: #{path_or_stream.inspect}")
       end
       
       # Return our status
@@ -159,20 +183,12 @@ class Importer
     end
     
     # Load up the sheets in the correct mode
-    def load_sheets(mode, source)
+    def load_each(mode, source, scopes, &block)
       # Let our derived classes open the file, etc. as they need
       if init_source(mode, source)
         # Once the source is set, run through each defined sheet, pass it to
         # our sheet loader, and have the sheet parse it out.
-        @importer.sheets.values.each do |sheet|
-          res = load_raw_sheet(sheet)
-          if res === false
-            # D'oh.
-          else
-            # Tell the sheet to parse the data
-            sheet.parse_raw_data(res)
-          end
-        end
+        load_raw(scopes, &block)
       end
     end
     
@@ -185,8 +201,8 @@ class Importer
     # Override this method in derived classes to take the given sheet definition,
     # find that sheet in the input source, and read out the raw (unparsed) rows
     # as an array of arrays.  Return false if the sheet cannot be loaded.
-    def load_raw_sheet(sheet)
-      raise "Unimplemented method #load_raw_sheet in data reader #{self.class.name}"
+    def load_raw(scopes, &block)
+      raise "Unimplemented method #load_raw in data reader #{self.class.name}"
     end
     
     # Provides default value parsing/coersion for all derived data readers.  Attempts to be clever and
@@ -241,7 +257,7 @@ class Importer
         else
           floatval = parse_value(val, :float)
           if floatval
-            (floatval * 100).to_i
+            (floatval * 100).round
           else
             nil
           end
@@ -259,10 +275,6 @@ class Importer
     
     def add_error(*args)
       @importer.add_error(*args)
-    end
-    
-    def add_warning(*args)
-      @importer.add_warning(*args)
     end
     
   end

@@ -2,14 +2,11 @@ class Importer
   
   class Error
      
-    attr_reader :sheet, :row, :text
+    attr_reader :row, :text
     
     def initialize(context, text)
-      if context.is_a?(Importer::Sheet)
-        @sheet = context
-      elsif context.is_a?(Importer::Row)
+      if context.is_a?(Importer::Row)
         @row = context
-        @sheet = context.sheet
       end
       @text = text.to_s
     end
@@ -17,9 +14,7 @@ class Importer
     def summary
       summary = ''
       if @row
-        summary += "#{@sheet} #{@row}: "
-      elsif @sheet
-        summary += "#{@sheet}: "
+        summary += "#{@row}: "
       end
       summary + @text
     end
@@ -29,19 +24,14 @@ class Importer
     end
     
     # Returns the level at which this error occurred, one of
-    # :row, :sheet, :importer
+    # :row, :importer
     def level
       return :row if @row
-      return :sheet if @sheet
       return :importer
     end
     
     def row_level?
       level == :row
-    end
-    
-    def sheet_level?
-      level == :sheet
     end
     
     def importer_level?
@@ -54,8 +44,6 @@ class Importer
       case context
       when Row
         return @row == context
-      when Sheet
-        return @sheet == context
       else
         return true
       end  

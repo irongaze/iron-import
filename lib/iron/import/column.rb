@@ -26,7 +26,11 @@ class Importer
   #       # seems like the "same" source value, for example an Excel source file
   #       # will give you a float value for all numeric types, even "integers".
   #       parse do |raw_value|
-  #         raw_value.to_i + 1000
+  #         val = raw_value.to_i + 1000
+  #         # NOTE: we're in a block, so don't do this:
+  #         return val
+  #         # Instead, use implied return:
+  #         val
   #       end
   #      
   #       # You can also add a custom validator to check the value and add
@@ -54,7 +58,6 @@ class Importer
     attr_reader :data
 
     # Configuration
-    dsl_flag :required
     dsl_accessor :header, :position, :type
     dsl_accessor :parse, :validate
    
@@ -85,20 +88,16 @@ class Importer
       str
     end     
 
-    # Create a new column definition, with the owning sheet, the key for the column,
+    # Create a new column definition with the key for the column,
     # and an optional set of options.  The options supported are the same as those supported
     # in block/builder mode.
-    def initialize(sheet, key, options_hash = {})
+    def initialize(importer, key, options_hash = {})
       # Save off our info
       @key = key
-      @sheet = sheet
-      @importer = @sheet.importer
+      @importer = importer
       
       # Return it as a string, by default
       @type = options_hash.delete(:type) { :string }
-      
-      # By default, we allow empty values
-      @required = options_hash.delete(:required) { false }
       
       # Position can be explicitly set
       @position = options_hash.delete(:position)
@@ -126,6 +125,19 @@ class Importer
     def reset
       @data = Data.new
     end
+
+    # DEPRECATED - duplicates functionality better provided by #validate, e.g.
+    #
+    #   validate do |val|
+    #     raise 'Missing required value for column foo' if val.nil?
+    #   end
+    def required!
+      Kernel.warn "[DEPRECATION] Importer::Column#required! is deprecated.  Please use #validate instead."
+      col = self.key
+      validate do |val|
+        raise "Missing required value for column :#{col}"
+      end
+    end
     
     # When true, our header definition or index match the passed text or column index.
     def match_header?(text, index)
@@ -151,7 +163,7 @@ class Importer
     
     # Applies any validation to a parsed value
     def validate_value(row, val)
-      return unless @validate
+      return true unless @validate
       begin 
         @validate.call(val)
         true
@@ -178,20 +190,21 @@ class Importer
       'Column ' + @data.pos
     end
     
-    # Extracts the sheet's values for this column and returns them in an array.
+    # Extracts the imported values for this column and returns them in an array.
     # Note that the array indices ARE NOT row indices, as the rows may have been
     # filtered and any header rows have been skipped.
     def to_a
-      @sheet.data.rows.collect {|r| r[@key] }
+      @importer.data.rows.collect {|r| r[@key] }
     end
     
-    # Extracts the sheet's values for this column and returns them in a hash of
+    # Extracts the values for this column and returns them in a hash of
     # row num => value for all non-filtered, non-header rows.
     def to_h
       res = {}
-      @sheet.data.rows.collect {|r| res[r.num] = r[@key] }
+      @importer.data.rows.collect {|r| res[r.num] = r[@key] }
       res
     end
+    def to_hash ; to_h ; end
   
   end
   

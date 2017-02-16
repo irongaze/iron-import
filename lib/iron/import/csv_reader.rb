@@ -30,10 +30,10 @@ class Importer
       end
     end
    
-    # Normally, we'd check the key and return the proper data, but for CSV files, 
-    # there's only one "sheet"
-    def load_raw_sheet(key)
-      @raw_rows
+    # Normally, we'd check the scopes and return the proper data, but for CSV files, 
+    # there's only one scope...
+    def load_raw(scopes, &block)
+      block.call(@raw_rows)
     end
     
   end

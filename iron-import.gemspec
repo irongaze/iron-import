@@ -2,8 +2,8 @@
 Gem::Specification.new do |s|
   # Project attributes
   s.name        = "iron-import"
-  s.summary     = "CSV, XLS, and XLSX import automation support"
-  s.description = "Simple yet powerful library for importing tabular data including support for auto-detecting column order, parsing/validating cell data, aggregating errors, etc."
+  s.summary     = "CSV, HTML, XLS, and XLSX import automation support"
+  s.description = "Simple yet powerful library for importing tabular data from CSV, HTML, XLS and XLSX files, including support for auto-detecting column order, parsing/validating cell data, aggregating errors, etc."
 
   # Post-install message
   # s.post_install_message = "Thanks for installing!"
@@ -40,6 +40,7 @@ Gem::Specification.new do |s|
   s.executables = Dir["bin/*"].collect {|p| File.basename(p)}
   s.add_development_dependency "rspec", "~> 2.6"
   s.add_development_dependency "roo", "~> 1.13"
+  s.add_development_dependency "nokogiri", "~> 1.6"
   s.required_ruby_version = '>= 1.9.2'
   s.license     = 'MIT'
 end
