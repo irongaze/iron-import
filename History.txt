@@ -1,10 +1,31 @@
+== 0.8.0 / 2017-06-29
+* Breaking Change: change signature of Importer#add_error to support new features
+* Breaking Change: Importer.missing_headers will be [] instead of nil on all headers found
+* Breaking Change: remove deprecated method Column#required!
+* Add Importer#rows to directly access rows post-import
+* Add Column#optional! to enable non-mandatory columns during header detection
+* Add Column#present? and Column#missing? to test for presence after import attempt
+* Add Importer#validate_columns to allow detecting invalid column combinations
+* Add Importer#validate_rows to allow whole-row validation
+* Add Importer#virtual_column and Column#calculate to enable virtual columns
+* Track actual header text found for columns
+* Update Column#to_s to use actual header text when present
+* Revamp error tracking significantly to provide better reporting ability
+* Improve error tracking to include row/column when knowable
+* Improve error tracking to include problem values when knowable
+* Add Column#error_values to return unique raw error values by column
+* Add Column#error_values? which will be true when there is at least one error value for the column
+* Add Row#error_map to return map of column key => raw value for each row
+* Change Column#parse block processing to allow explicit #add_error call
+* Change Column#validate block processing to allow explicit #add_error call and to add an implicit error on returned false
+
 == 0.7.0 / 2017-02-16
 
 * Breaking Change: Removed multi-sheet support - use multiple importers instead
-* Breaking Change: Removed warnings as they were not being used
-* Breaking Change: Removed Column#required! due to bugginess and overlap with Column#validate
-* Add Importer#scope to allow narrowing the search to one or more sheets/tables when importing
+* Breaking Change: Removed warnings as they were confusing and not being used
+* Deprecate Column#required! due to bugginess and overlap with Column#validate
 * Add new HtmlReader support to handle parsing HTML <table> rows
+* Add Importer#scope to allow narrowing the search to one or more sheets/tables when importing
 * Modify Importer#import to support block mode combining #import and #process
 * Add Importer#import_string for handling explicit CSV/HTML/Custom text
 * Add Importer#on_error(&block) to allow inline conditional error handling

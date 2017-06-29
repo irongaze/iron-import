@@ -182,8 +182,14 @@ class Importer
       !@importer.has_errors?
     end
     
-    # Load up the sheets in the correct mode
+    # Load up the sheet in the correct mode
     def load_each(mode, source, scopes, &block)
+      # Handle some common error cases centrally
+      if mode == :file && !File.exist?(source)
+        add_error("File not found: #{source}")
+        return
+      end
+      
       # Let our derived classes open the file, etc. as they need
       if init_source(mode, source)
         # Once the source is set, run through each defined sheet, pass it to
@@ -209,12 +215,11 @@ class Importer
     # handle edge cases like converting '5.00' to 5 when in integer mode, etc.  If you find your inputs aren't
     # being parsed correctly, add a custom #parse block on your Column definition.
     def parse_value(val, type)
-      return nil if val.nil? || val.to_s == ''
+      return nil if val.nil? || val.to_s.strip == ''
       
       case type
       when :string then
         val = val.to_s.strip
-        val.blank? ? nil : val
         
       when :integer, :int then 
         if val.class < Numeric

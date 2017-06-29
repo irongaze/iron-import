@@ -33,6 +33,11 @@ describe Importer::Row do
     @row.should be_empty
   end
   
+  it 'should return nil on missing data' do
+    @row.set_values(:a => 1, :b => 2)
+    @row[:c].should be_nil
+  end
+  
   it 'should not change when to_hash values are changed' do
     @row.set_values(:a => 1, :b => 2)
     hash = @row.to_hash

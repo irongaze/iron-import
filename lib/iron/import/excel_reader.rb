@@ -25,7 +25,7 @@ class Importer
         false
       end
     rescue Exception => e
-      add_error("Error reading file #{source}: #{e}")
+      add_error("Error reading #{source}: #{e}")
       false
     end
     

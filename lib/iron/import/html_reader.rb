@@ -13,12 +13,7 @@ class Importer
       if mode == :stream
         @html = Nokogiri::HTML(source)
       elsif mode == :file
-        if File.exist?(source)
-          @html = File.open(source) {|f| Nokogiri::HTML(f) }
-        else
-          add_error("File not found: #{source}")
-          return false
-        end
+        @html = File.open(source) {|f| Nokogiri::HTML(f) }
       else
         add_error("Unsupported HTML mode: #{mode}")
         return false

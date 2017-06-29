@@ -21,10 +21,18 @@
 # A more realistic and complex example follows:
 #
 #   Importer.build do
-#     # Define our columns and settings
+#     # Define our columns and their settings
 #     column :order_number do
-#       header /order (num.*|id)/i
+#       optional!
+#       header /order (\#|num.*|id)/i
 #       type :int
+#     end
+#     column :po_number do
+#       optional!
+#       type :string
+#       validate do |num|
+#         num.match(/[a-z0-9]{12}/i)
+#       end
 #     end
 #     column :date do
 #       type :date
@@ -32,10 +40,32 @@
 #     column :amount do
 #       type :cents
 #     end
+#     virtual_column :tax do
+#       calculate do |row|
+#         row[:amount] * 0.05
+#       end
+#     end
 #  
+#     # When you have optional columns, you can validate that you have enough of them
+#     # using a custom block returning true if the found columns are good enough to 
+#     # continue.
+#     validate_columns do |cols|
+#       # Require either an order # or a PO # column
+#       keys = cols.collect(&:key)
+#       keys.include?(:order_number) || keys.include?(:po_number)
+#     end
+#
 #     # Filter out any rows missing an order number
 #     filter do |row|
-#       !row[:order_number].nil?
+#       !row[:order_number].nil? || !row[:po_number].nil?
+#     end
+#
+#     # Use row-level validation to validate using
+#     # any or all column values for that row, to allow complex validation
+#     # scenarios that depend on the full context.
+#     validate_rows do |row|
+#       # Ensure PO Numbers are only valid starting in 2017
+#       add_error 'Invalid order - PO Num from before 2017' unless (row[:date] > Date.parse('2017-01-01') || row[:po_number].nil?)
 #     end
 #
 #   end.import('/path/to/file.csv', format: :csv) do |row|
@@ -52,17 +82,16 @@ class Importer
 
   # Inner class for holding load-time data that gets reset on each load call
   class Data
-    attr_accessor :start_row, :rows
+    attr_accessor :start_row, :rows, :errors
     def initialize
       @start_row = nil
       @rows = []
+      @errors = []
     end
   end
 
   # Array of defined columns
   attr_reader :columns
-  # Array of error messages collected during an import/process run
-  attr_accessor :errors
   # Custom reader, if one has been defined using #on_file or #on_stream
   attr_reader :custom_reader
   # Set to the format selected during past import
@@ -81,6 +110,8 @@ class Importer
   # Set to a block/lambda taking a parsed but unvalidated row as a hash,
   # return true to keep, false to skip.
   dsl_accessor :filter
+  # Alias for #filter
+  def filter_rows(*args, &block); filter(*args, &block); end
   # Source file/stream encoding, assumes UTF-8 if none specified
   dsl_accessor :encoding
 
@@ -113,14 +144,15 @@ class Importer
   #     headerless!
   #
   #     # Manually set the start row for data, defaults to nil
-  #     # indicating that the data rows start immediatly following the header.
+  #     # indicating that the data rows start immediatly following the header, or
+  #     # at the first row if #headerless!.
   #     start_row 4
   #
   #     # Define a filter that will skip unneeded rows.  The filter command takes
   #     # a block that receives the parsed (but not validated!) row data as an 
   #     # associative hash of :col_key => <parsed value>, and returns 
   #     # true to keep the row or false to exclude it.
-  #     filter do |row|
+  #     filter_rows do |row|
   #       row[:id].to_i > 5000
   #     end
   #
@@ -171,6 +203,7 @@ class Importer
   # Use whichever you prefer!
   def column(key, options_hash = {}, &block)
     # Find existing column with key to allow re-opening an existing definition
+    key = key.to_sym
     col = @columns.detect {|c| c.key == key }
     unless col
       # if none found, add a new one
@@ -182,6 +215,11 @@ class Importer
     DslProxy::exec(col, &block) if block
     
     col
+  end
+  
+  def virtual_column(key, options_hash = {}, &block)
+    options_hash[:virtual] = true
+    column(key, options_hash, &block)
   end
   
   # Limit the search scope for a single format (:xls, :xlsx, :html, :custom)
@@ -213,7 +251,7 @@ class Importer
   # a block accepting a file path, and returning an array of arrays (rows of
   # raw column values).  Use #add_error(msg) to add a reading error.
   # 
-  # Adding a custom stream parser will change the importer's default
+  # Adding a custom file/stream parser will change the importer's default
   # format to :custom, though you can override it when calling #import as 
   # usual.
   #
@@ -268,7 +306,7 @@ class Importer
   #   encoding: source encoding override, defaults to guessing based on input
   #   
   # Generally, you should be able to throw a path or stream at it and it should work.  The
-  # options exist to allow overriding in cases where the automation heuristics
+  # options exist to allow overriding in cases where the automated heuristics
   # have failed and the input type is known by the caller.
   #
   # If you're trying to import from a raw string, use Importer#import_string instead.
@@ -362,7 +400,7 @@ class Importer
   # Use this form of import for the common case of having a raw CSV or HTML string.
   def import_string(string, options = {}, &block)
     # Get a format here if needed
-    if options[:format].nil?
+    if options[:format].nil? || options[:format] == :auto
       if @custom_reader
         format = :custom
       else
@@ -378,8 +416,8 @@ class Importer
   # Call with a block accepting a single Importer::Row with contents that
   # look like :column_key => <parsed value>.  Any filtered rows
   # will not be present.  If you want to register an error, simply 
-  # raise "some text" and it will be added to the importer's error
-  # list for display to the user, logging, or whatever.
+  # raise "some text" or call #add_error and it will be added to the importer's 
+  # error list for display to the user, logging, or whatever.
   def process
     @data.rows.each do |row|
       begin
@@ -390,18 +428,44 @@ class Importer
     end
   end
   
+  # Call with a block to process error handling tasks.  Block will only execute
+  # if an error (read, validate, exception, etc.) has occurred during the 
+  # just-completed #import.
+  #
+  # Your block can access the #error_summary or the #errors array to do whatever
+  # logging, reporting etc. is desired.
   def on_error(&block)
     raise 'Invalid block passed to Importer#on_error: block may accept 0, 1 or 2 arguments' if block.arity > 2
     
     if has_errors?
       case block.arity
       when 0 then DslProxy.exec(self, &block)
-      when 1 then DslProxy.exec(self, @errors, &block)
-      when 2 then DslProxy.exec(self, @errors, error_summary, &block)
+      when 1 then DslProxy.exec(self, errors, &block)
+      when 2 then DslProxy.exec(self, errors, error_summary, &block)
       end
     end
     
     self
+  end
+  
+  # Call with a block accepting an array of Column objects and returning
+  # true if the columns in the array should constitute a valid header row.  Intended
+  # for use with optional columns to define multiple supported column sets, or
+  # conditionally required secondary columns.  Columns will be passed in in the
+  # order detected, so you can use ordering to help determine which columns are
+  # required if that helps.
+  def validate_columns(&block)
+    raise 'Invalid block passed to Importer#validate_columns: block should accept a single argument' if block.arity != 1
+    @column_validator = block
+  end
+  
+  # Call with a block accepting a single Row instance.  Just like Column#validate, you
+  # can fail by returning false, calling #add_error(msg) or by raising an exception.
+  # The intent of this method of validation is to allow using the full row context to
+  # validate 
+  def validate_rows(&block)
+    raise 'Invalid block passed to Importer#validate_columns: block should accept a single Row argument' if block.arity != 1
+    @row_validator = block
   end
   
   # Process the raw values for the first rows in a sheet,
@@ -419,7 +483,7 @@ class Importer
         next_index += 1
       end
       @data.start_row = @start_row || 1
-      @missing_headers = nil
+      @missing_headers = []
       return true
       
     else
@@ -430,21 +494,42 @@ class Importer
         next unless row
         
         # Set up for this iteration
-        remaining = @columns.dup
+        remaining = @columns.select {|c| !c.virtual? }
     
         # Step through this row's raw values, and look for a matching column for all columns
         row.each_with_index do |val, i|
-          col = remaining.detect {|c| c.match_header?(val.to_s, i) }
+          val = val.to_s
+          col = remaining.detect {|c| c.match_header?(val, i) }
           if col
             remaining -= [col]
             col.data.index = i
+            col.data.header_text = val
           end
         end
+        # Reset remaining cols
+        remaining.each do |col| 
+          col.data.index = nil
+          col.data.header_text = nil
+        end
         
-        if remaining.empty?
+        # Have we found them all, or at least a valid sub-set?
+        header_found = remaining.empty?
+        unless header_found
+          if remaining.all?(&:optional?)
+            if @column_validator
+              # Run custom column validator
+              cols = found_columns
+              header_found = @column_validator.call(cols)
+            else
+              # No validator... do we have any found columns at all???
+              header_found = @columns.any?(&:present?)
+            end
+          end
+        end
+        if header_found
           # Found all columns, have a map, update our start row to be the next line and return!
           @data.start_row = @start_row || i+2
-          @missing_headers = nil
+          @missing_headers = []
           return true
         else
           missing = remaining if (missing.nil? || missing.count > remaining.count)
@@ -452,7 +537,7 @@ class Importer
       end
       
       # If we get here, we're hosed
-      @missing_headers = missing.collect(&:key) if @missing_headers.nil? || @missing_headers.count > missing.count
+      @missing_headers = missing.collect(&:key) if @missing_headers.empty? || @missing_headers.count > missing.count
       false
     end
   end
@@ -467,46 +552,81 @@ class Importer
     # Parse out the values
     values = {}
     @columns.each do |col|
-      index = col.data.index
-      raw_val = raw_data[index]
-      if col.parse
-        # Use custom parser if this row has one
-        val = col.parse_value(row, raw_val)
-      else
-        # Otherwise use our standard parser
-        val = @reader.parse_value(raw_val, col.type)
+      if col.present? && !col.virtual?
+        index = col.data.index
+        raw_val = raw_data[index]
+        if col.parses?
+          # Use custom parser if this row has one
+          val = col.parse_value(row, raw_val)
+        else
+          # Otherwise use our standard parser
+          val = @reader.parse_value(raw_val, col.type)
+        end
+        values[col.key] = val
       end
-      values[col.key] = val
     end
 
-    # Set the values and filter if needed
+    # Set the values
     row.set_values(values)
-    return nil if @filter && !@filter.call(row)
-
-    # Row is desired, now validate values
-    @columns.each do |col|
-      val = values[col.key]
-      col.validate_value(row, val)
-    end
     
+    if !row.has_errors?
+      # Filter if needed
+      return nil if @filter && !@filter.call(row)
+
+      # Calculate virtual columns' values
+      @columns.each do |col|
+        if col.virtual?
+          row.values[col.key] = col.calculate_value(row)
+        end
+      end
+
+      # Validate values if any column has a custom validator
+      @columns.each do |col|
+        if col.present? && col.validates?
+          val = values[col.key]
+          col.validate_value(row, val)
+        end
+      end
+    
+      # If we have a row validator, call it on the full row
+      if @row_validator && !row.has_errors?
+        valid = false
+        had_error = Error.with_context(@importer, row, nil, nil) do
+          valid = DslProxy.exec(self, row, &@row_validator)
+        end
+        if !had_error && valid.is_a?(FalseClass)
+          add_error("Invalid row: #{row.to_hash.inspect}", :row => row)
+        end
+      end
+    end
+
     # We is good
     @data.rows << row
     row
+  end
+  
+  def rows
+    @data.rows
+  end
+  
+  def found_columns
+    @columns.select(&:present?).sort_by(&:index)
+  end
+
+  # Array of error messages collected during an import/process run
+  def errors
+    @data.errors
   end
 
   # When true, one or more errors have been recorded during this import/process
   # cycle.
   def has_errors?
-    @errors.any?
+    @data.errors.any?
   end
   
   # Add an error to our error list.  Will result in a failed import.
-  def add_error(context, msg = nil)
-    if context.is_a?(String) && msg.nil?
-      msg = context
-      context = nil
-    end
-    @errors << Error.new(context, msg)
+  def add_error(msg, context = {})
+    @data.errors << Error.new(msg, context)
   end
   
   # Returns a human-readable summary of the errors present on the importer, or
@@ -517,7 +637,7 @@ class Importer
 
     # Group by error text - we often get the same error dozens of times
     list = {}
-    @errors.each do |err|
+    @data.errors.each do |err|
       errs = list[err.text] || []
       errs << err
       list[err.text] = errs
@@ -544,8 +664,7 @@ class Importer
   protected
   
   def reset
-    @errors = []
-    @missing_headers = nil
+    @missing_headers = []
     @format = nil
     @reader = nil
     @data = Data.new

@@ -2,7 +2,7 @@
 Gem::Specification.new do |s|
   # Project attributes
   s.name        = "iron-import"
-  s.summary     = "CSV, HTML, XLS, and XLSX import automation support"
+  s.summary     = "CSV, HTML, XLS, and XLSX import processing support"
   s.description = "Simple yet powerful library for importing tabular data from CSV, HTML, XLS and XLSX files, including support for auto-detecting column order, parsing/validating cell data, aggregating errors, etc."
 
   # Post-install message

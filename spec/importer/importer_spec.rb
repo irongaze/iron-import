@@ -23,6 +23,21 @@ describe Importer do
     importer.scopes.should == { :xls => [1, 'Sheet 2'], :html => ['table.funny'] }
   end
   
+  it 'should calculate virtual columns' do
+    importer = Importer.build do
+      column :num, :type => :int
+      virtual_column :summary do
+        calculate do |row|
+          "Value = #{row[:num]}"
+        end
+      end
+    end
+    
+    importer.import_string("num\n1\n2")
+    importer.error_summary.should be_nil
+    importer.column(:summary).to_a.should == ['Value = 1', 'Value = 2']
+  end
+  
   it 'should find headers automatically' do
     # Define a few sample columns
     importer = Importer.new
@@ -55,6 +70,59 @@ describe Importer do
     # Parse it!
     importer.find_header(rows).should be_false
     importer.missing_headers.should == [:alpha]
+  end
+
+  it 'should succeed when missing optional columns' do
+    # Define a few sample columns
+    importer = Importer.new
+    importer.column(:alpha).optional!
+    importer.column(:beta)
+    importer.column(:gamma)
+    # Some dummy data
+    rows = [
+      ['Bob', 'Beta', 'Gamma', 'Epsilon']
+    ]
+
+    # Parse it!
+    importer.find_header(rows).should be_true
+    importer.missing_headers.should be_empty
+  end
+  
+  it 'should support row-based validation' do
+    importer = Importer.build do
+      column :a, :type => :int
+      column :b, :type => :int
+      
+      validate_rows do |row|
+        row[:a] + row[:b] == 5
+      end
+    end
+    
+    importer.import_string("a,b\n1,4\n6,-1\n7,0\n1,1")
+    importer.errors.count.should == 2
+  end
+  
+  it 'should support column order/presence validation' do
+    # Build an importer with optional columns
+    importer = Importer.new
+    importer.column(:alpha).optional!
+    importer.column(:beta).optional!
+    importer.column(:gamma)
+    # Set up a column validator
+    importer.validate_columns do |cols|
+      cols = cols.collect(&:key)
+      cols.sort == [:alpha, :gamma] || cols.sort == [:beta, :gamma]
+    end
+
+    # Missing required column
+    importer.find_header([['Alpha', 'Beta', 'Epsilon']]).should be_false
+    # Missing both optional
+    importer.find_header([['Bob', 'Gamma', 'Epsilon']]).should be_false
+    # Required + single optional
+    importer.find_header([['Bob', 'Gamma', 'Alpha']]).should be_true
+    importer.find_header([['Bob', 'Gamma', 'Beta']]).should be_true
+    # Required + both optional
+    importer.find_header([['Alpha', 'Gamma', 'Beta']]).should be_true
   end
 
   it 'should capture errors' do
@@ -108,7 +176,7 @@ describe Importer do
   it 'should import a string' do
     sum = 0
     csv = "one,two\n1,2"
-    Importer.build do
+    importer = Importer.build do
       column :one
       column :two
     end.import_string(csv, :format => :csv) do |rows|
@@ -117,6 +185,7 @@ describe Importer do
       sum = rows[:one].to_i + rows[:two].to_i
     end
     # Just make sure we ran correctly
+    importer.column(:one).to_s.should == 'One Column'
     sum.should == 3
   end
   
@@ -130,6 +199,55 @@ describe Importer do
     importer.format.should == :csv
     importer.import_string("<div><table><tr><td>one</td></tr></table></div>")
     importer.format.should == :html
+  end
+
+  it 'should capture errors with context' do
+    sum = 0
+    csv = "one,two,three\n1,2,X\n1,,3"
+    importer = Importer.build do
+      column :one
+      column :two do
+        validate do |val|
+          val.to_i == 2
+        end
+      end
+      column :three do
+        validate do |val|
+          add_error('Invalid value') unless val.to_i > 0
+        end
+      end
+    end
+    importer.import_string(csv)
+    
+    # Just make sure we ran correctly
+    importer.errors.count.should == 2
+    importer.column(:two).errors.count.should == 1
+    importer.column(:three).errors.count.should == 1
+    importer.column(:three).error_values.should == ['X']
+    map = importer.rows.first.error_map
+    map[:two].should be_nil
+    map[:three].should be_a(Importer::Error)
+  end
+  
+  it 'should import properly when optional columns are missing' do
+    csv = "one,two\n1,2\n1,"
+    importer = Importer.build do
+      column :one
+      column :two do
+        validate do |val|
+          val.to_i == 2
+        end
+      end
+      column :three do
+        optional!
+        validate do |val|
+          add_error('Invalid value') unless val.to_i > 0
+        end
+      end
+    end
+    importer.import_string(csv)
+    
+    importer.found_columns.count.should == 2
   end
   
 end

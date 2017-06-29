@@ -2,12 +2,14 @@ class Importer
   
   class Row
 
-    attr_reader :line, :values
+    attr_reader :line, :values, :errors
     
     def initialize(importer, line, value_hash = nil)
       @importer = importer
       @line = line
       set_values(value_hash)
+      
+      @errors = []
     end
     
     def set_values(value_hash)
@@ -56,6 +58,19 @@ class Importer
     
     def add_error(msg)
       @importer.add_error(self, msg)
+    end
+    
+    def has_errors?
+      @errors && @errors.count > 0
+    end
+    
+    # Return a map of column key to Error, intended for use in error reporting.
+    def error_map
+      map = {}
+      @errors.each do |err|
+        map[err.column.key] = err
+      end
+      map
     end
     
   end

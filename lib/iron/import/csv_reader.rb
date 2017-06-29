@@ -30,9 +30,9 @@ class Importer
       end
     end
    
-    # Normally, we'd check the scopes and return the proper data, but for CSV files, 
-    # there's only one scope...
     def load_raw(scopes, &block)
+      # Normally, we'd check the scopes and return the proper data, but for CSV files, 
+      # there's only one scope...
       block.call(@raw_rows)
     end
     

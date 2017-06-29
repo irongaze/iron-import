@@ -112,4 +112,29 @@ describe Importer::Column do
     @importer.has_errors?.should be_true
   end
   
+  it 'should record optionalness' do
+    @col.optional?.should be_false
+    @col.optional!
+    @col.optional?.should be_true
+  end
+  
+  it 'should know if it is present in the headers' do
+    @col.present?.should be_false
+    @col.data.index = 2
+    @col.present?.should be_true
+  end
+  
+  it 'should use the header text as its name if present' do
+    @col.data.index = 2
+    @col.to_s.should == 'Column C'
+    @col.data.header_text = 'Invoice #'
+    @col.to_s.should == 'Invoice # Column'
+  end
+  
+  it 'should support virtual operation' do
+    @col.virtual!
+    @col.virtual?.should be_true
+    @col.to_s.should == 'Test Column'
+  end
+  
 end
