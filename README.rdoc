@@ -55,7 +55,7 @@ any errors encountered... well, this is the library for you!
     # order and the starting row of the data.
     importer = Importer.build do
       column :name do
-        # Column order and start row are auto-detected
+        # Provide a regex to find the header for this column
         header /(name|product)/i
       end
       column :description do

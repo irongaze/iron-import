@@ -52,12 +52,13 @@ class Importer
     end
     
     # This row's values as a hash of :column_key => <parsed + validated value>
-    def to_hash
+    def to_h
       @values.dup
     end
+    def to_hash ; to_h ; end
     
     def add_error(msg)
-      @importer.add_error(self, msg)
+      @importer.add_error(msg, :row => self)
     end
     
     def has_errors?

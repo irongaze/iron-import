@@ -1,3 +1,9 @@
+== 0.8.1 / 2017-07-18
+* Do not include optional headers in #missing_headers
+* Improve string parsing to strip trailing '.0' from incoming float values
+* Add #to_h to Row for consistency with Column
+* Bugfix for calls to #add_error with invalid calling signature
+
 == 0.8.0 / 2017-06-29
 * Breaking Change: change signature of Importer#add_error to support new features
 * Breaking Change: Importer.missing_headers will be [] instead of nil on all headers found

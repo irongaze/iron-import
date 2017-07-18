@@ -343,7 +343,7 @@ class Importer
     else
       # Auto select
       @reader = DataReader::for_source(self, path_or_stream)
-      @format = @reader.format
+      @format = @reader.format if @reader
     end
 
     # Verify we got one
@@ -423,7 +423,7 @@ class Importer
       begin
         yield row
       rescue Exception => e
-        add_error(row, e.to_s)
+        add_error(e.to_s, :row => row)
       end
     end
   end
@@ -488,7 +488,7 @@ class Importer
       
     else
       # Match by testing
-      missing = nil
+      missing = []
       raw_rows.each_with_index do |row, i|
         # Um, have data?
         next unless row
@@ -496,7 +496,7 @@ class Importer
         # Set up for this iteration
         remaining = @columns.select {|c| !c.virtual? }
     
-        # Step through this row's raw values, and look for a matching column for all columns
+        # Step through this row's raw values, and look for a matching header for all columns
         row.each_with_index do |val, i|
           val = val.to_s
           col = remaining.detect {|c| c.match_header?(val, i) }
@@ -532,7 +532,9 @@ class Importer
           @missing_headers = []
           return true
         else
-          missing = remaining if (missing.nil? || missing.count > remaining.count)
+          # Didn't find 'em all, remember this set of missing ones for reporting later
+          remaining.select! {|col| !col.optional? }
+          missing = remaining if missing.empty? || missing.count > remaining.count
         end
       end
       

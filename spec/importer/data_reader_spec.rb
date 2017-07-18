@@ -10,7 +10,10 @@ describe Importer::DataReader do
       '1234' => 1234,
       '-2' => -2,
       '5.00' => 5,
+      '2.5.00' => nil,
       'foo' => nil,
+      '4 ducks' => nil,
+      '2-4' => nil,
       '' => nil,
       55 => 55,
       3.0 => 3
@@ -22,6 +25,7 @@ describe Importer::DataReader do
   it 'should parse floats' do
     {
       '1.256' => 1.256,
+      '4.22.00' => nil,
       '-20.3' => -20.3,
       '5.00' => 5.0,
       'foo' => nil,
@@ -39,7 +43,8 @@ describe Importer::DataReader do
       " spaces \t" => 'spaces',
       '' => nil,
       255 => '255',
-      -1.5 => '-1.5'
+      -1.5 => '-1.5',
+      10.0 => '10'
     }.each_pair do |val, res|
       @reader.parse_value(val, :string).should === res
     end
@@ -50,6 +55,7 @@ describe Importer::DataReader do
       '$123.00' => 12300,
       '9.95' => 995,
       '5' => 500,
+      '04 ' => 400,
       '0.5' => 50,
       '-95' => -9500,
       52 => 5200,
@@ -77,6 +83,7 @@ describe Importer::DataReader do
     Importer::DataReader.for_format(@importer, :csv).should be_a(Importer::CsvReader)
     Importer::DataReader.for_format(@importer, :xls).should be_a(Importer::XlsReader)
     Importer::DataReader.for_format(@importer, :xlsx).should be_a(Importer::XlsxReader)
+    Importer::DataReader.for_format(@importer, :html).should be_a(Importer::HtmlReader)
     Importer::DataReader.for_format(@importer, :foo).should be_nil
   end
   
@@ -84,6 +91,8 @@ describe Importer::DataReader do
     Importer::DataReader.for_path(@importer, '/tmp/foo.csv').should be_a(Importer::CsvReader)
     Importer::DataReader.for_path(@importer, 'BAR.XLS').should be_a(Importer::XlsReader)
     Importer::DataReader.for_path(@importer, '/tmp/nog_bog.xlsx').should be_a(Importer::XlsxReader)
+    Importer::DataReader.for_path(@importer, '/tmp/nog_bog.htm').should be_a(Importer::HtmlReader)
+    Importer::DataReader.for_path(@importer, '/tmp/tim.txt.html').should be_a(Importer::HtmlReader)
     Importer::DataReader.for_path(@importer, '/tmp/blinkin.bmp').should be_nil
   end
   

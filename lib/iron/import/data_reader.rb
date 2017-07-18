@@ -161,7 +161,8 @@ class Importer
         
       elsif path_or_stream.is_a?(String)
         # Assume it's a path
-        if File.exist?(path_or_stream)
+        is_path = File.exist?(path_or_stream) rescue false
+        if is_path
           if supports_file?
             # We're all set, load up the given path
             load_each(:file, path_or_stream, scopes, &block)
@@ -171,7 +172,7 @@ class Importer
             load_each(:stream, file, scopes, &block)
           end
         else
-          add_error("Unable to locate source file #{path_or_stream}")
+          add_error("Unable to locate source file with path #{path_or_stream.slice(0,200)}")
         end
         
       else
@@ -219,7 +220,11 @@ class Importer
       
       case type
       when :string then
-        val = val.to_s.strip
+        if val.is_a?(Float)
+          val.to_s.strip.gsub(/\.0+$/, '')
+        else
+          val.to_s.strip
+        end
         
       when :integer, :int then 
         if val.class < Numeric

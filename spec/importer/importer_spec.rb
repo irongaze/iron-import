@@ -62,6 +62,7 @@ describe Importer do
     importer = Importer.new
     importer.column(:alpha)
     importer.column(:gamma)
+    importer.column(:optional, :optional => true)
     # Some dummy data
     rows = [
       ['Bob', 'Beta', 'Gamma', 'Epsilon']
