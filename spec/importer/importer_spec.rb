@@ -23,21 +23,6 @@ describe Importer do
     importer.scopes.should == { :xls => [1, 'Sheet 2'], :html => ['table.funny'] }
   end
   
-  it 'should calculate virtual columns' do
-    importer = Importer.build do
-      column :num, :type => :int
-      virtual_column :summary do
-        calculate do |row|
-          "Value = #{row[:num]}"
-        end
-      end
-    end
-    
-    importer.import_string("num\n1\n2")
-    importer.error_summary.should be_nil
-    importer.column(:summary).to_a.should == ['Value = 1', 'Value = 2']
-  end
-  
   it 'should find headers automatically' do
     # Define a few sample columns
     importer = Importer.new
@@ -87,6 +72,37 @@ describe Importer do
     # Parse it!
     importer.find_header(rows).should be_true
     importer.missing_headers.should be_empty
+  end
+
+  it 'should calculate virtual columns' do
+    importer = Importer.build do
+      column :num, :type => :int
+      virtual_column :summary do
+        calculate do |row|
+          "Value = #{row[:num]}"
+        end
+      end
+    end
+    
+    importer.import_string("num\n1\n2")
+    importer.error_summary.should be_nil
+    importer.column(:summary).to_a.should == ['Value = 1', 'Value = 2']
+  end
+  
+  it 'should honor type before applying custom parsers' do
+    importer = Importer.new
+    importer.column(:alpha) do
+      parse do |raw|
+        raw
+      end
+    end
+
+    importer.import_string("alpha\n1.0\n1.5")
+    importer.to_a.should == [{:alpha => '1.0'}, {:alpha => '1.5'}]
+
+    importer.column(:alpha).type :float
+    importer.import_string("alpha\n1.0\n1.5")
+    importer.to_a.should == [{:alpha => 1.0}, {:alpha => 1.5}]
   end
   
   it 'should support row-based validation' do
@@ -148,6 +164,25 @@ describe Importer do
 
     importer.add_error('An error')
     importer.on_error do
+      was_run = true
+    end
+    was_run.should be_true
+  end
+  
+  it 'should run conditional code when successful' do
+    importer = Importer.build do
+      column :foo
+    end
+
+    was_run = false
+    importer.on_success do
+      was_run = true
+    end
+    was_run.should be_false
+
+    importer.import_string("foo\n1")
+    importer.has_errors?.should be_false
+    importer.on_success do
       was_run = true
     end
     was_run.should be_true

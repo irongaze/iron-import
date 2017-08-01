@@ -76,6 +76,10 @@
 #   end.on_error do
 #     # If we have any errors, do something
 #     raise error_summary
+#
+#   end.on_success do
+#     # No errors, do this
+#     puts "Imported successfully!"
 #   end
 #
 class Importer 
@@ -418,12 +422,12 @@ class Importer
   # will not be present.  If you want to register an error, simply 
   # raise "some text" or call #add_error and it will be added to the importer's 
   # error list for display to the user, logging, or whatever.
-  def process
+  def process(&block)
     @data.rows.each do |row|
       begin
-        yield row
+        DslProxy.exec(self, row, &block)
       rescue Exception => e
-        add_error(e.to_s, :row => row)
+        add_exception(e, :row => row)
       end
     end
   end
@@ -442,6 +446,24 @@ class Importer
       when 0 then DslProxy.exec(self, &block)
       when 1 then DslProxy.exec(self, errors, &block)
       when 2 then DslProxy.exec(self, errors, error_summary, &block)
+      end
+    end
+    
+    self
+  end
+  
+  # Call with a block to process any post-import tasks.  Block will only execute
+  # if an import has been run with no errors.
+  #
+  # Your block can access the #rows to do whatever
+  # logging, reporting etc. is desired.
+  def on_success(&block)
+    raise 'Invalid block passed to Importer#on_succes: block may accept 0 or 1arguments' if block.arity > 1
+    
+    if @data.rows.any? && !has_errors?
+      case block.arity
+      when 0 then DslProxy.exec(self, &block)
+      when 1 then DslProxy.exec(self, @data.rows, &block)
       end
     end
     
@@ -557,12 +579,11 @@ class Importer
       if col.present? && !col.virtual?
         index = col.data.index
         raw_val = raw_data[index]
+        # Otherwise use our standard parser
+        val = @reader.parse_value(raw_val, col.type)
         if col.parses?
           # Use custom parser if this row has one
-          val = col.parse_value(row, raw_val)
-        else
-          # Otherwise use our standard parser
-          val = @reader.parse_value(raw_val, col.type)
+          val = col.parse_value(row, val)
         end
         values[col.key] = val
       end
@@ -631,6 +652,12 @@ class Importer
     @data.errors << Error.new(msg, context)
   end
   
+  def add_exception(ex, context = {})
+    line = ex.backtrace.first.extract(/[a-z0-9_\-\.]+\:[0-9]+\:/i)
+    msg = [line, ex.to_s].list_join(' ')
+    @data.errors << Error.new(msg, context)
+  end
+  
   # Returns a human-readable summary of the errors present on the importer, or
   # nil if no errors are present
   def error_summary
@@ -647,10 +674,11 @@ class Importer
     
     # Build summary & return
     list.values.collect do |errs|
-      summary = errs.first.summary
+      err = errs.first
       if errs.count == 1
-        summary
+        err.summary
       else
+        summary = [err.column.to_s, err.text].list_join(': ')
         errs.count.to_s + ' x ' + summary
       end
     end.list_join(', ')

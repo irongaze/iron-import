@@ -219,10 +219,16 @@ class Importer
       return nil if val.nil? || val.to_s.strip == ''
       
       case type
+      when :raw then
+        val
+        
       when :string then
         if val.is_a?(Float)
-          val.to_s.strip.gsub(/\.0+$/, '')
+          # Sometimes float values come in for "integer" columns from Excel,
+          # so if the user asks for a string, strip off that ".0" if present
+          val.to_s.gsub(/\.0+$/, '')
         else
+          # Strip whitespace and we're good to go
           val.to_s.strip
         end
         
@@ -248,7 +254,7 @@ class Importer
         if val.class < Numeric
           val.to_f
         else 
-          # Convert to string, strip off trailing decimal zeros
+          # Clean up then verify it matches a valid float format & convert
           val = val.to_s.strip
           if val.match(/\A-?[0-9]+(?:\.[0-9]+)?\z/)
             val.to_f
@@ -285,6 +291,10 @@ class Importer
     
     def add_error(*args)
       @importer.add_error(*args)
+    end
+    
+    def add_exception(*args)
+      @importer.add_exception(*args)
     end
     
   end

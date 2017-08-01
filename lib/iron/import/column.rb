@@ -29,7 +29,9 @@ class Importer
   #       # that different source types may give you different raw values for what
   #       # seems like the "same" source value, for example an Excel source file
   #       # will give you a float value for all numeric types, even "integers", while
-  #       # CSV and HTML values are always strings.
+  #       # CSV and HTML values are always strings.  By default, will take the raw
+  #       # value of the row, but if used with #type, you can have the pre-processing
+  #       # of the type as your input.
   #       parse do |raw_value|
   #         val = raw_value.to_i + 1000
   #         # NOTE: we're in a block, so don't do this:
@@ -125,7 +127,7 @@ class Importer
       @virtual = options_hash.delete(:virtual) { false }
       
       # Return it as a string, by default
-      @type = options_hash.delete(:type) { :string }
+      @type = options_hash.delete(:type)
       
       # Position can be explicitly set
       @position = options_hash.delete(:position)
@@ -181,6 +183,24 @@ class Importer
         @position - 1
       elsif @position.is_a?(String)
         Column.pos_to_index(@position)
+      end
+    end
+    
+    # Override normal dsl_accessor behavior to return our default type
+    # which will be :raw if a #parse handler has been set, else :string
+    alias_method :internal_type, :type
+    def type(*args)
+      if args.count > 0
+        internal_type(*args)
+      else
+        if @type
+          # Explicitly set type
+          @type
+        else
+          # Our default is generally :string, but if we have a parser,
+          # default to the :raw value
+          parses? ? :raw : :string
+        end
       end
     end
     

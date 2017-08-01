@@ -25,7 +25,7 @@ class Importer
         false
       end
     rescue Exception => e
-      add_error("Error reading #{source}: #{e}")
+      add_exception(e)
       false
     end
     
@@ -47,7 +47,7 @@ class Importer
 
     rescue Exception => e
       # Not sure why we'd get here, but we strive for error-freedom here, yessir.
-      @importer.add_error("Error loading Excel data: #{e}")
+      add_exception(e)
     end
   
     # When true, the given sheet name or zero-based index

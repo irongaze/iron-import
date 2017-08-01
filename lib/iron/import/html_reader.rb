@@ -27,7 +27,7 @@ class Importer
       end
       
     rescue Exception => e
-      add_error("Error reading HTML source #{source}: #{e}")
+      add_exception(e)
       false
     end
     
@@ -65,7 +65,7 @@ class Importer
 
     rescue Exception => e
       # Not sure why we'd get here, but we strive for error-freedom here, yessir.
-      add_error("Error loading tables #{scopes.list_join(', ')}: #{e}")
+      add_exception(e)
     end
   
   end

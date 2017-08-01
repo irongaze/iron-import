@@ -21,7 +21,7 @@ class Importer
         yield
       rescue RuntimeError => e
         # Old-style way of registering errors was to just raise 'foo'
-        importer.add_error(e.to_s)
+        importer.add_exception(e)
       end
       had_error = @error_occurred
       

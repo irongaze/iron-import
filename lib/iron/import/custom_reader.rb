@@ -42,7 +42,7 @@ class Importer
       
     rescue Exception => e
       # Catch any exceptions thrown and note them with helpful stacktrace info for debugging custom readers
-      add_error("Error in custom reader: #{e} @ #{e.backtrace.first}")
+      add_exception(e)
     end
     
   end

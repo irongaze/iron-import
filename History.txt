@@ -1,3 +1,9 @@
+== 0.8.2 / 2017-08-01
+* Add Importer#on_success to enable conditional processing once an import has been successfully completed
+* Pre-parse values with Column#type set when using Column#parse (instead of ignoring it)
+* Make importer scope available in Importer#process and the block form of Importer#import
+* Add backtrace info to error logging for exceptions to help during debugging
+
 == 0.8.1 / 2017-07-18
 * Do not include optional headers in #missing_headers
 * Improve string parsing to strip trailing '.0' from incoming float values
