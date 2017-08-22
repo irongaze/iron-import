@@ -109,7 +109,7 @@ class Importer
   dsl_flag :headerless
   # Explicitly sets the row number (1-indexed) where data rows begin,
   # usually left defaulted to nil to automatically start after the header
-  # row.
+  # row, or on the first row if #headerless! is set.
   dsl_accessor :start_row
   # Set to a block/lambda taking a parsed but unvalidated row as a hash,
   # return true to keep, false to skip.
@@ -363,6 +363,7 @@ class Importer
     end
 
     # Read in the data!
+    loaded = false
     @reader.load(path_or_stream, scopes) do |raw_rows|
       # Find our column layout, start of data, etc
       if find_header(raw_rows)
@@ -374,6 +375,7 @@ class Importer
           end
         end
         # We've found a workable sheet/table/whatever, stop looking
+        loaded = true
         true
         
       else
@@ -383,9 +385,14 @@ class Importer
       end
     end
     
-    # If we have any missing headers, note that fact
-    if @missing_headers && @missing_headers.count > 0
-      add_error("Unable to locate required column header for column(s): " + @missing_headers.collect{|c| ":#{c}"}.list_join(', '))
+    # Verify that we found a working set of rows
+    unless loaded
+      # If we have any missing headers, note that fact
+      if @missing_headers && @missing_headers.count > 0
+        add_error("Unable to locate required column header for column(s): " + @missing_headers.collect{|c| ":#{c}"}.list_join(', '))
+      else 
+        add_error("Unable to locate required column headers!")
+      end
     end
     
     # If we're here with no errors, we rule!
@@ -533,15 +540,18 @@ class Importer
           col.data.index = nil
           col.data.header_text = nil
         end
-        
+
         # Have we found them all, or at least a valid sub-set?
         header_found = remaining.empty?
         unless header_found
-          if remaining.all?(&:optional?)
+          if found_columns.any? && remaining.all?(&:optional?)
             if @column_validator
               # Run custom column validator
-              cols = found_columns
-              header_found = @column_validator.call(cols)
+              valid = false
+              had_error = Error.with_context(@importer, nil, nil, nil) do
+                valid = DslProxy.exec(self, found_columns, &@column_validator)
+              end
+              header_found = !had_error && valid
             else
               # No validator... do we have any found columns at all???
               header_found = @columns.any?(&:present?)

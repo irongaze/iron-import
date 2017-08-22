@@ -1,16 +1,26 @@
+== 0.8.3 / 2017-08-22
+
+* Add :bool column type (supports 'yes'/'no', 'Y'/'N', 0/1, 'true'/'false', 'T'/'F')
+* Add error when failing to find valid header due to Importer#validate_columns failure
+* Utilize new Class#inspect_only feature to make #inspect worth a damn on Column & Row during debugging
+* Execute Importer#validate_columns in importer context to allow explicit #add_error calls
+
 == 0.8.2 / 2017-08-01
+
 * Add Importer#on_success to enable conditional processing once an import has been successfully completed
 * Pre-parse values with Column#type set when using Column#parse (instead of ignoring it)
 * Make importer scope available in Importer#process and the block form of Importer#import
 * Add backtrace info to error logging for exceptions to help during debugging
 
 == 0.8.1 / 2017-07-18
+
 * Do not include optional headers in #missing_headers
 * Improve string parsing to strip trailing '.0' from incoming float values
 * Add #to_h to Row for consistency with Column
 * Bugfix for calls to #add_error with invalid calling signature
 
 == 0.8.0 / 2017-06-29
+
 * Breaking Change: change signature of Importer#add_error to support new features
 * Breaking Change: Importer.missing_headers will be [] instead of nil on all headers found
 * Breaking Change: remove deprecated method Column#required!

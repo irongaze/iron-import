@@ -283,7 +283,17 @@ class Importer
         # Pull out the date part of the string and convert
         date_str = val.to_s.extract(/[0-9]+[\-\/][0-9]+[\-\/][0-9]+/)
         date_str.to_date rescue nil
-        
+      
+      when :bool then
+        val_str = parse_value(val, :string).to_s.downcase
+        if ['true','yes','y','t','1'].include?(val_str)
+          return true
+        elsif ['false','no','n','f','0'].include?(val_str)
+          return false
+        else
+          nil
+        end
+      
       else
         raise "Unknown column type #{type.inspect} - unimplemented?"
       end

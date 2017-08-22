@@ -28,4 +28,75 @@ describe Importer::CsvReader do
     ]
   end
   
+  it 'should fail on WSM sample data' do
+    importer = Importer.build do
+      column :company_name do
+        optional!
+      end
+      virtual_column :company do
+        calculate do |row|
+          if column(:company_name).present?
+            row[:company_name]
+          else
+            [row[:store_code], row[:store_num]].list_join(', ')
+          end
+        end
+      end
+      column :store_code do
+        header /code$/i
+        optional!
+      end
+      column :store_num do
+        optional!
+        header /num(ber)?$/i
+      end
+      virtual_column :store do
+        calculate do |row|
+          Store.find_by_upc(row[:upc])
+        end
+      end
+      column :buyer_name do
+        optional!
+      end
+      column :buyer_email do
+        optional!
+        header /buyer\s*email/i
+        validate do |val|
+          val.match? /^\s*([a-z0-9_\-\+\.]+@[a-z0-9\.\-]+\.[a-z]+)(,\s*[a-z0-9_\-\+\.]+@[a-z0-9\.\-]+\.[a-z]+)*\s*$/i
+        end
+      end
+      column :rep_email do
+        optional!
+        header /^(sales\s*)?rep\s*email/i
+        validate do |val|
+          val.match? /^\s*([a-z0-9_\-\+\.]+@[a-z0-9\.\-]+\.[a-z]+)(,\s*[a-z0-9_\-\+\.]+@[a-z0-9\.\-]+\.[a-z]+)*\s*$/i
+        end
+      end
+      column :regional do
+        optional!
+        type :bool
+      end
+
+      # We need a company name column if none passed in
+      validate_columns do |cols|
+        keys = cols.collect(&:key)
+        has_company = keys.include?(:company_name)
+        has_company && (keys.include?(:store_num) || keys.include?(:store_code))
+      end
+
+      # Only pay attention to rows with a store num or code
+      # filter_rows do |row|
+      #   row[:store_num].present? || row[:store_code].present?
+      # end
+      
+      # Make sure rows are valid
+      validate_rows do |row|
+        add_error("Unable to locate specified company") unless row[:company].present?
+        add_error("Unable to locate specified store") unless row[:store].present?
+      end
+    end
+    importer.import(SpecHelper.sample_path('wsm-data.csv')).should be_false
+    importer.errors.first.to_s.should == "Unable to locate required column headers!"
+  end
+  
 end

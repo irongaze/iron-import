@@ -2,7 +2,11 @@ class Importer
   
   class Row
 
+    # Attributes
     attr_reader :line, :values, :errors
+    
+    # Limit our inspect to avoid dumping whole importer
+    inspect_only :line, :values
     
     def initialize(importer, line, value_hash = nil)
       @importer = importer

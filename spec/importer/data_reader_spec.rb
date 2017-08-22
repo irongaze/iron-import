@@ -44,7 +44,8 @@ describe Importer::DataReader do
       '' => nil,
       255 => '255',
       -1.5 => '-1.5',
-      10.0 => '10'
+      10.0 => '10',
+      '10.0' => '10.0'
     }.each_pair do |val, res|
       @reader.parse_value(val, :string).should === res
     end
@@ -60,7 +61,9 @@ describe Importer::DataReader do
       '-95' => -9500,
       52 => 5200,
       1.0 => 100,
-      1.25 => 125
+      1.25 => 125,
+      -2.001 => -200,
+      'bob' => nil
     }.each_pair do |val, res|
       @reader.parse_value(val, :cents).should === res
     end
@@ -76,6 +79,29 @@ describe Importer::DataReader do
       Date.new(2000,4,1) => Date.new(2000,4,1)
     }.each_pair do |val, res|
       @reader.parse_value(val, :date).should === res
+    end
+  end
+  
+  it 'should parse bools' do
+    {
+      'tRue' => true,
+      'yes ' => true,
+      'T' => true,
+      'y' => true,
+      '1' => true,
+      1.0 => true,
+      'FALSE' => false,
+      'no' => false,
+      'F' => false,
+      'n' => false,
+      '0' => false,
+      0 => false,
+      'tim' => nil,
+      nil => nil,
+      '' => nil,
+      'xyz' => nil
+    }.each_pair do |val, res|
+      @reader.parse_value(val, :bool).should === res
     end
   end
   

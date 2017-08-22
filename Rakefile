@@ -7,7 +7,10 @@ task :default => 'install'
 # Do our rspec thang
 desc "Run specs"
 RSpec::Core::RakeTask.new(:quiet_spec) do |t|
+  # Don't show the file list at startup
   t.verbose = false
+  # If any tests are set to :focus status, only run those tests
+  t.rspec_opts = '--tag focus'
 end
 
 # Find and return the name of our latest gem

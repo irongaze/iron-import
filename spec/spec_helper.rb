@@ -10,6 +10,11 @@ RSpec.configure do |config|
   config.color = true
   config.add_formatter 'documentation'
   config.backtrace_exclusion_patterns = [/rspec/]
+  # Allow us to use: it '...', :focus do ... end 
+  # rather than needing: it '...', :focus => true do ... end
+  config.treat_symbols_as_metadata_keys_with_true_values = true
+  # If everything is filtered, run everything - used if no :focus element is present
+  config.run_all_when_everything_filtered = true
 end
 
 module SpecHelper

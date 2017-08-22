@@ -22,7 +22,7 @@ class Importer
   #       header /(price|cost)/i
   #
   #       # Tells the data parser what type of data this column contains, one
-  #       # of :integer, :string, :date, :float, or :cents.  Defaults to :string.
+  #       # of :integer, :string, :date, :float, :bool or :cents.  Defaults to :string.
   #       type :cents
   #
   #       # Instead of a type, you can set an explicit parse block.  Be aware
@@ -30,8 +30,8 @@ class Importer
   #       # seems like the "same" source value, for example an Excel source file
   #       # will give you a float value for all numeric types, even "integers", while
   #       # CSV and HTML values are always strings.  By default, will take the raw
-  #       # value of the row, but if used with #type, you can have the pre-processing
-  #       # of the type as your input.
+  #       # value of the row, but if used with #type, you can have the pre-processed
+  #       # output of that type as your input.
   #       parse do |raw_value|
   #         val = raw_value.to_i + 1000
   #         # NOTE: we're in a block, so don't do this:
@@ -53,9 +53,9 @@ class Importer
   #       virtual!
   #
   #       # When #virtual! is set, gets called to calculate each row's value for this
-  #       # column using the row's parsed values.
+  #       # column using the row's parsed values from other columns.
   #       calculate do |row|
-  #         row[:some_col] + 5
+  #         row[:other_col_key] + 5
   #       end
   #     end
   #   end
@@ -83,6 +83,9 @@ class Importer
     dsl_accessor :header, :position, :type
     dsl_accessor :parse, :validate, :calculate
     dsl_flag :optional, :virtual
+    
+    # Limit our inspect to avoid dumping whole importer
+    inspect_only :key, :type, :optional, :virtual, :position, :index
    
     def self.pos_to_index(pos)
       raise 'Invalid column position: ' + pos.inspect unless pos.is_a?(String) && pos.match(/\A[a-z]{1,3}\z/i)
