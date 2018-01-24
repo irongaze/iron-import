@@ -14,19 +14,32 @@ class Importer
       if mode == :stream
         # For streams, we just read 'em in and parse 'em
         text = source.read
-        encoding = @importer.encoding || 'UTF-8'
-        @raw_rows = CSV.parse(text, :encoding => "#{encoding}:UTF-8")
-        true
         
       elsif mode == :file
         # Files have a different path
-        encoding = @importer.encoding || 'UTF-8'
-        @raw_rows = CSV.read(source, :encoding => "#{encoding}:UTF-8")
-        true
+        text = File.read(source)
         
       else
-        @importer.add_error("Unsupported CSV mode: #{mode}")
-        false
+        # WTF?
+        @importer.add_error("Unsupported CSV mode: #{mode.inspect}")
+        return false
+      end
+
+      # Fix shitty Windows line-feeds so things are standardized
+      text.gsub!(/\r\n/, "\n")
+      text.gsub!(/\r/, "\n")
+
+      # Parse it out
+      encoding = @importer.encoding || 'UTF-8'
+      options = {
+        :encoding => "#{encoding}:UTF-8",
+        :skip_blanks => true
+      }
+      begin
+        @raw_rows = CSV.parse(text, options)
+      rescue Exception => e
+        @importer.add_error('Error encountered while parsing CSV')
+        @importer.add_exception(e)
       end
     end
    

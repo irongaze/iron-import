@@ -41,7 +41,7 @@ any errors encountered... well, this is the library for you!
 - Import custom tabular data via passed block
 - Automatic column order and start row detection
 - Support for optional columns and dynamic column sets
-- Basic data coercion supporting string, int, float, date and cents types
+- Basic data coercion supporting string, int, float, date, bool and cents types
 - Custom data coercion via passed block
 - Custom data validation via passed block
 - Row filtering using custom block
@@ -65,11 +65,12 @@ any errors encountered... well, this is the library for you!
         end
         # And custom validation
         validate do |parsed_val|
-          add_error('Invalid description') unless parsed_val.length > 5
+          add_error('Description too short') unless parsed_val.length > 5
         end
       end
       column :price do
-        # Built in type conversion handles common cases
+        # Built in type conversion handles common cases - in this case
+        # will correctly turn 2.5, "$2.50" or "2.5" into 250
         type :cents
       end
       
@@ -99,7 +100,7 @@ any errors encountered... well, this is the library for you!
         end
         
       else
-        # General errors, dump report
+        # General errors, dump summary report
         puts "Error(s) on import: " + error_summary
       end
     end
@@ -118,17 +119,17 @@ any errors encountered... well, this is the library for you!
 
 It can be tricky to keep track of what happens in Importer#import, so here's a quick cheat-sheet:
 
-- Determine the **format** of stream/file to import
-- Determine **import scope** (sheet/table/whatever) using Importer#scope settings, if any
-- **Find column headers + start row**
-- Validate presence of **required columns**
-- **Validate column set** using Importer#validate_columns
+- Determine the *format* of stream/file to import
+- Determine *import scope* (sheet/table/whatever) using Importer#scope settings, if any
+- *Find column headers + start row*
+- Validate presence of *required columns*
+- *Validate column set* using Importer#validate_columns
 - Run each row:
-  - **Parse** each column's value using Column#parse or Column#type
-  - **Filter the row** using Importer#filter_rows on parsed values to reject unwanted rows
-  - **Calculate virtual columns** using Column#calculate
-  - **Validate each parsed value** using Column#validate
-  - **Validate entire row** using Importer#validate_rows
+  - *Parse* each column's value using Column#parse or Column#type
+  - *Filter the row* using Importer#filter_rows on parsed values to reject unwanted rows
+  - *Calculate virtual columns* using Column#calculate
+  - *Validate each parsed value* using Column#validate
+  - *Validate entire row* using Importer#validate_rows
 
 Generally, the import will stop when an error occurs, save on row processing, where each row will
 be run until an error for that row is found.  The goal is to accumulate actionable info for

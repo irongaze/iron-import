@@ -5,6 +5,24 @@ describe Importer::CsvReader do
     @reader = Importer::CsvReader.new(@importer)
   end
   
+  it 'should convert to standard newlines' do
+    importer = Importer.build do
+      headerless!
+      column :number do
+        type :integer
+      end
+      column :string do
+        type :string
+      end
+    end      
+    importer.import_string("1,\"foo\nbar\"\r\n2,hi\r3,yo").should be_true
+    importer.to_a.should == [
+      {:number => 1, :string => "foo\nbar"},
+      {:number => 2, :string => "hi"},
+      {:number => 3, :string => "yo"}
+    ]
+  end
+  
   it 'should load our simple CSV data' do
     importer = Importer.build do
       column :number do

@@ -286,4 +286,16 @@ describe Importer do
     importer.found_columns.count.should == 2
   end
   
+  it 'should search multiple sheets to find header' do
+    importer = Importer.build do
+      column :date do
+        type :date
+      end
+      column :order
+    end
+    importer.import(SpecHelper.sample_path('2-sheets.xlsx')).should be_true
+    importer.errors.count.should == 0
+    importer.to_a.should == [{:order => '223300', :date => '1973-01-02'.to_date}]
+  end
+  
 end

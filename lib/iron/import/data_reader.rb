@@ -9,7 +9,7 @@ class Importer
     attr_reader :format
 
     def self.verify_roo!
-      if Gem::Specification.find_all_by_name('roo', '~> 1.13.0').empty?
+      if Gem::Specification.find_all_by_name('roo', '>= 1.13.0').empty?
         raise "You are attempting to use the iron-import gem to import an Excel file.  Doing so requires installing the roo gem, version 1.13.0 or later."
       else
         require 'roo'
@@ -17,7 +17,7 @@ class Importer
     end
 
     def self.verify_nokogiri!
-      if Gem::Specification.find_all_by_name('nokogiri', '~> 1.6.0').empty?
+      if Gem::Specification.find_all_by_name('nokogiri', '>= 1.6.0').empty?
         raise "You are attempting to use the iron-import gem to import an HTML file.  Doing so requires installing the nokogiri gem, version 1.6.0 or later."
       else
         require 'nokogiri'
