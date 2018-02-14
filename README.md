@@ -1,20 +1,22 @@
-= GEM: iron-import
+# GEM: iron-import
 
 Written by Rob Morris @ Irongaze Consulting LLC (http://irongaze.com)
 
-== DESCRIPTION
+DESCRIPTION
+-----------
 
 Simple, versatile, reliable tabular data import.
 
 This gem provides a set of classes to support automating import of tabular data from 
-CSV, HTML, XLS and XLSX files.  Key features include defining columns, auto-detecting column order, 
+CSV/TSV, HTML, XLS and XLSX files.  Key features include defining columns, auto-detecting column order, 
 pre-parsing data, validating data, filtering rows, and robust error tracking.
 
 IMPORTANT NOTE: this gem is in flux as we work to define the best possible abstraction
 for the task.  Breaking changes will be noted by increases in the minor version,
 ie 0.5.0 and 0.5.1 will be compatible, but 0.6.0 will not (i.e. we follow semantic versioning).
 
-== WHO IS THIS FOR?
+WHO IS THIS FOR?
+----------------
 
 The Roo/Spreadsheet gems do a great job of providing general purpose spreadsheet reading.
 However, using them with unreliable user submitted data requires a lot of error checking,
@@ -33,7 +35,8 @@ a custom importer based on Roo.  But if you're looking to take a customer-upload
 validate and coerce values, then write each row to a database, all the while tracking
 any errors encountered... well, this is the library for you!
 
-== KEY FEATURES
+KEY FEATURES
+------------
 
 - Simple yet robust data import and error handling using elegant builder syntax
 - Import data from file, stream or string data sources
@@ -48,7 +51,8 @@ any errors encountered... well, this is the library for you!
 - Automatically track and report errors with fine-grained context
 - Prefer capturing errors over raising exceptions for more robust imports
 
-== SAMPLE USAGE
+SAMPLE USAGE
+------------
 
     # Define our importer, with three columns.  The importer will look for a row containing
     # "name"/"product", "description" and "price" (case insensitively) and automatically determine column
@@ -115,27 +119,29 @@ any errors encountered... well, this is the library for you!
       raise "Errors found: " + error_summary
     end
     
-== IMPORT EXECUTION ORDER
+IMPORT EXECUTION ORDER
+----------------------
 
 It can be tricky to keep track of what happens in Importer#import, so here's a quick cheat-sheet:
 
-- Determine the *format* of stream/file to import
-- Determine *import scope* (sheet/table/whatever) using Importer#scope settings, if any
-- *Find column headers + start row*
-- Validate presence of *required columns*
-- *Validate column set* using Importer#validate_columns
+- Determine the **format** of stream/file to import
+- Determine **import scope** (sheet/table/whatever) using Importer#scope settings, if any
+- **Find column headers + start row**
+- Validate presence of **required columns**
+- Validate **column set** using Importer#validate_columns
 - Run each row:
-  - *Parse* each column's value using Column#parse or Column#type
-  - *Filter the row* using Importer#filter_rows on parsed values to reject unwanted rows
-  - *Calculate virtual columns* using Column#calculate
-  - *Validate each parsed value* using Column#validate
-  - *Validate entire row* using Importer#validate_rows
+  - **Parse** each column's value using Column#parse or Column#type
+  - **Filter the row** using Importer#filter_rows on parsed values to reject unwanted rows
+  - **Calculate virtual columns** using Column#calculate
+  - **Validate each parsed value** using Column#validate
+  - **Validate entire row** using Importer#validate_rows
 
 Generally, the import will stop when an error occurs, save on row processing, where each row will
 be run until an error for that row is found.  The goal is to accumulate actionable info for
 presentation to the end user who is uploading the file.
 
-== REQUIREMENTS
+REQUIREMENTS
+------------
 
 Depends on the iron-extensions and iron-dsl gems for CSV and custom import formats.
 
@@ -145,7 +151,8 @@ Optionally requires the nokogiri gem to support HTML import and parsing.
 
 Requires RSpec, nokogiri and roo to build/test.
 
-== INSTALLATION
+INSTALLATION
+------------
 
 To install, simply run:
 

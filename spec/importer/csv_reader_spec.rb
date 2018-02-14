@@ -46,6 +46,13 @@ describe Importer::CsvReader do
     ]
   end
   
+  it 'should auto-detect tab-separated data' do
+    @reader.load(SpecHelper.sample_path('sprouts.tsv')) do |rows|
+      rows.count.should == 43
+      rows.first.count.should == 5
+    end
+  end
+  
   it 'should fail on WSM sample data' do
     importer = Importer.build do
       column :company_name do

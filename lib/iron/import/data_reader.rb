@@ -62,10 +62,11 @@ class Importer
     
     # Figure out which format to use for a given path based on file name
     def self.for_path(importer, path)
-      format = path.to_s.extract(/\.(csv|html?|xlsx?)\z/i)
+      format = path.to_s.extract(/\.(csv|tsv|html?|xlsx?)\z/i)
       if format
         format = format.downcase
         format = 'html' if format == 'htm'
+        format = 'csv' if format == 'tsv'
         format = format.to_sym
         for_format(importer, format)
       else

@@ -1,3 +1,9 @@
+== 0.8.5 / 2018-02-14
+
+* Add simple separator char detection for CSV files, currently supporting tabs & commas
+* Fix return value of Importer#import when unable to find handler for file/stream
+* Fix CSV importer to raise an error if now rows are found on import
+
 == 0.8.4 / 2018-01-24
 
 * Improve CSV reader to canonicalize newlines, converting \r + \r\n to \n before import, fixes Windows lameness

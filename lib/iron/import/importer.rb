@@ -353,7 +353,7 @@ class Importer
     # Verify we got one
     unless @reader
       add_error("Unable to find format handler for format :#{format} on import of #{path_or_stream.class.name} source - aborting")
-      return
+      return block ? self : false
     end
     
     # What scopes (if any) should we limit our searching to?

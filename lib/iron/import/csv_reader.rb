@@ -29,17 +29,33 @@ class Importer
       text.gsub!(/\r\n/, "\n")
       text.gsub!(/\r/, "\n")
 
+      # Look at first line, count sep chars, pick the most common
+      sep_char = ','
+      line = text.split(/\n/, 2).first
+      if line.count("\t") > line.count(',')
+        sep_char = "\t"
+      end
+
       # Parse it out
       encoding = @importer.encoding || 'UTF-8'
       options = {
         :encoding => "#{encoding}:UTF-8",
-        :skip_blanks => true
+        :skip_blanks => true,
+        :col_sep => sep_char
       }
       begin
         @raw_rows = CSV.parse(text, options)
       rescue Exception => e
         @importer.add_error('Error encountered while parsing CSV')
         @importer.add_exception(e)
+        return false
+      end
+
+      if @raw_rows.nil? || @raw_rows.count == 0
+        @importer.add_error('No rows found - unable to process CSV file')
+        return false
+      else
+        return true
       end
     end
    

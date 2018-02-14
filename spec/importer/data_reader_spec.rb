@@ -115,6 +115,7 @@ describe Importer::DataReader do
   
   it 'should build an instance based on a path' do
     Importer::DataReader.for_path(@importer, '/tmp/foo.csv').should be_a(Importer::CsvReader)
+    Importer::DataReader.for_path(@importer, '/tmp/foo.TSV').should be_a(Importer::CsvReader)
     Importer::DataReader.for_path(@importer, 'BAR.XLS').should be_a(Importer::XlsReader)
     Importer::DataReader.for_path(@importer, '/tmp/nog_bog.xlsx').should be_a(Importer::XlsxReader)
     Importer::DataReader.for_path(@importer, '/tmp/nog_bog.htm').should be_a(Importer::HtmlReader)
