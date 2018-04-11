@@ -298,4 +298,34 @@ describe Importer do
     importer.to_a.should == [{:order => '223300', :date => '1973-01-02'.to_date}]
   end
   
+  it 'should find the right reader for a given format + path/stream' do
+    importer = Importer.build
+    importer.find_reader('foo.xls').class.should == Importer::XlsReader
+    importer.find_reader('foo.text', :csv).class.should == Importer::CsvReader
+    importer.find_reader('/bob/page.html').class.should == Importer::HtmlReader
+    custom = Importer::CustomReader.new(importer)
+    importer.find_reader('foo.text', nil, custom).class.should == Importer::CustomReader
+  end
+
+  it 'should allow reading raw row values' do
+    rows = Importer.read_lines(2, SpecHelper.sample_path('2-sheets.xlsx'), :scope => 'Sheet 2')
+    rows.count.should == 2
+    rows.first.should == ['Table 1', nil]
+    rows.last.should == ['Order', 'Date']
+  end
+  
+  it 'should allow reading raw row values when using a custom reader' do
+    custom = lambda {|source|
+      File.readlines(source).collect do |line|
+        line.extract(/([A-TV-Z][0-9][A-Z0-9]{1,5})\s+(.*)/)
+      end
+    }
+    rows = Importer.read_lines(3, SpecHelper.sample_path('icd10-custom.txt'), :on_file => custom)
+    rows.should == [
+      ['A000', 'Cholera due to Vibrio cholerae 01, biovar cholerae'],
+      ['A001', 'Cholera due to Vibrio cholerae 01, biovar eltor'],
+      ['A009', 'Cholera, unspecified']
+    ]
+  end
+  
 end

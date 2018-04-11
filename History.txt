@@ -1,3 +1,6 @@
+== 0.8.6 / 2018-04-11
+* Add Importer#read_lines to allow reading an arbitrary number of raw rows from a file with format detection
+
 == 0.8.5 / 2018-02-14
 
 * Add simple separator char detection for CSV files, currently supporting tabs & commas

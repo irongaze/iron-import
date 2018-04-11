@@ -127,6 +127,42 @@ class Importer
     importer
   end
 
+  # Helper method for use in extracting the raw values for the first n
+  # rows in a given source.  Uses the same format options and detection code
+  # used by Importer#import.  If you are using a custom reader, you can pass in as
+  # options a lambda for :on_file or :on_stream to set the data reader to use.
+  def self.read_lines(num_lines, path_or_stream, options = {}, &block)
+    # Build a dummy importer
+    importer = Importer.build
+
+    # Get the reader for our inputs
+    custom_reader = nil
+    if options[:on_file]
+      custom_reader = Importer::CustomReader.new(importer)
+      custom_reader.set_reader(:file, options[:on_file])
+      
+    elsif options[:on_stream]
+      custom_reader = Importer::CustomReader.new(importer)
+      custom_reader.set_reader(:stream, options[:on_stream])
+    end
+    reader = importer.find_reader(path_or_stream, options[:format], custom_reader)
+
+    # Verify we got one
+    raise 'Unable to find valid reader for path' unless reader
+    
+    # What scopes (if any) should we limit our searching to?
+    scopes = options.delete(:scope)
+    if scopes && !scopes.is_a?(Array)
+      scopes = [scopes]
+    end
+
+    # Read in the data!
+    reader.load(path_or_stream, scopes) do |raw_rows|
+      return raw_rows.slice(0...num_lines)
+    end
+    raise 'Unable to load path or stream'
+  end
+
   # Ye standard constructor!
   def initialize(options = {})
     @scopes = {}
@@ -296,6 +332,29 @@ class Importer
     @custom_reader.set_reader(:stream, block)
   end
   
+  # Helper method to find the right file/stream reader given the options and
+  # params passed.
+  def find_reader(path_or_stream, format = nil, custom_reader = nil)
+    reader = nil
+    default = custom_reader ? :custom : :auto
+    format ||= default
+    if format == :custom
+      # Custom format selected, use our internal custom reader
+      reader = custom_reader
+      
+    elsif format && format != :auto
+      # Explicit format requested
+      reader = DataReader::for_format(self, format)
+      
+    else
+      # Auto select
+      reader = DataReader::for_source(self, path_or_stream)
+    end
+    
+    # What did we get?
+    reader
+  end
+  
   # First call to a freshly #build'd importer, this will read the file/stream/path supplied,
   # validate the required values, run custom validations... basically pre-parse and
   # massage the supplied data.  It will return true on success, or false if one
@@ -332,23 +391,10 @@ class Importer
   def import(path_or_stream, options = {}, &block)
     # Clear all our load-time state, including all rows, header locations... you name it
     reset
-    
-    # Get the reader for this format
-    default = @custom_reader ? :custom : :auto
-    @format = options.delete(:format) { default }
-    if @format == :custom
-      # Custom format selected, use our internal custom reader
-      @reader = @custom_reader
-      
-    elsif @format && @format != :auto
-      # Explicit format requested
-      @reader = DataReader::for_format(self, @format)
-      
-    else
-      # Auto select
-      @reader = DataReader::for_source(self, path_or_stream)
-      @format = @reader.format if @reader
-    end
+
+    # Pick a reader for this stream/file
+    @reader = find_reader(path_or_stream, options.delete(:format), @custom_reader)
+    @format = @reader.format if @reader
 
     # Verify we got one
     unless @reader
