@@ -328,4 +328,11 @@ describe Importer do
     ]
   end
   
+  it 'should rewind stream after reading' do
+    stream = File.open(SpecHelper.sample_path('2-sheets.xlsx'))
+    stream.pos.should == 0
+    rows = Importer.read_lines(2, stream, :scope => 'Sheet 2')
+    stream.pos.should == 0
+  end
+  
 end

@@ -146,6 +146,7 @@ class Importer
         if supports_stream?
           # Stream loader defined, run it
           load_each(:stream, path_or_stream, scopes, &block)
+          path_or_stream.rewind
         else
           # Write to temp file, as some of our readers only read physical files, annoyingly
           file = Tempfile.new(['importer', ".#{format}"])
@@ -157,6 +158,7 @@ class Importer
           ensure
             file.close
             file.unlink
+            path_or_stream.rewind
           end
         end
         

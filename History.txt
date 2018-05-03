@@ -1,3 +1,6 @@
+== 0.8.7 / 2018-05-03
+* Improve Importer#read_lines and Importer#import to rewind the stream at end of processing
+
 == 0.8.6 / 2018-04-11
 * Add Importer#read_lines to allow reading an arbitrary number of raw rows from a file with format detection
 
