@@ -1,3 +1,8 @@
+== 0.8.8 / 2018-07-23
+* Add error when all rows have been filtered or none were found
+* Add Importer#allow_empty! to suppress same
+* Improve error message when unable to detect file/stream format
+
 == 0.8.7 / 2018-05-03
 * Improve Importer#read_lines and Importer#import to rewind the stream at end of processing
 

@@ -107,6 +107,9 @@ class Importer
 
   # When true, skips header detection
   dsl_flag :headerless
+  # When true, does not record an error if all rows are filtered or there are none
+  # present at all
+  dsl_flag :allow_empty
   # Explicitly sets the row number (1-indexed) where data rows begin,
   # usually left defaulted to nil to automatically start after the header
   # row, or on the first row if #headerless! is set.
@@ -398,7 +401,7 @@ class Importer
 
     # Verify we got one
     unless @reader
-      add_error("Unable to find format handler for format :#{format} on import of #{path_or_stream.class.name} source - aborting")
+      add_error("Unable to find format handler for format :#{format || :auto} on import of #{path_or_stream.class.name} source - aborting")
       return block ? self : false
     end
     
@@ -414,14 +417,20 @@ class Importer
       # Find our column layout, start of data, etc
       if find_header(raw_rows)
         # Now, run all the data and add it as a Row instance
+        any = false
         raw_rows.each_with_index do |raw, index|
           row_num = index + 1
           if row_num >= @data.start_row
-            add_row(row_num, raw)
+            any = add_row(row_num, raw) || any
           end
         end
         # We've found a workable sheet/table/whatever, stop looking
         loaded = true
+        # Check to see if it contained any valid rows, add an error in case all rows are filtered
+        # or there just aren't any
+        unless any || has_errors? || allow_empty?
+          add_error("No unfiltered rows found - check your column headers")
+        end
         true
         
       else
@@ -431,8 +440,8 @@ class Importer
       end
     end
     
-    # Verify that we found a working set of rows
-    unless loaded
+    # Verify that we found a working set of rows, add an error if needed if not
+    unless has_errors? || loaded
       # If we have any missing headers, note that fact
       if @missing_headers && @missing_headers.count > 0
         add_error("Unable to locate required column header for column(s): " + @missing_headers.collect{|c| ":#{c}"}.list_join(', '))
@@ -511,9 +520,9 @@ class Importer
   # Your block can access the #rows to do whatever
   # logging, reporting etc. is desired.
   def on_success(&block)
-    raise 'Invalid block passed to Importer#on_succes: block may accept 0 or 1arguments' if block.arity > 1
+    raise 'Invalid block passed to Importer#on_success: block may accept 0 or 1 arguments' if block.arity > 1
     
-    if @data.rows.any? && !has_errors?
+    if !has_errors?
       case block.arity
       when 0 then DslProxy.exec(self, &block)
       when 1 then DslProxy.exec(self, @data.rows, &block)
@@ -526,9 +535,18 @@ class Importer
   # Call with a block accepting an array of Column objects and returning
   # true if the columns in the array should constitute a valid header row.  Intended
   # for use with optional columns to define multiple supported column sets, or
-  # conditionally required secondary columns.  Columns will be passed in in the
-  # order detected, so you can use ordering to help determine which columns are
-  # required if that helps.
+  # conditionally required secondary columns.  
+  #
+  # Columns will be passed in in the order detected, with full Column info, so you can use ordering 
+  # to help determine which columns are required if that helps.  
+  #
+  # Sample using the simpler #column accessor method:
+  #
+  # validate_columns do |cols|
+  #   unless column(:optional_col).present? || column(:other_optional_col).present?
+  #     add_error('You must include either Optional Col or Other Optional Col!')
+  #   end
+  # end
   def validate_columns(&block)
     raise 'Invalid block passed to Importer#validate_columns: block should accept a single argument' if block.arity != 1
     @column_validator = block
@@ -537,9 +555,9 @@ class Importer
   # Call with a block accepting a single Row instance.  Just like Column#validate, you
   # can fail by returning false, calling #add_error(msg) or by raising an exception.
   # The intent of this method of validation is to allow using the full row context to
-  # validate 
+  # validate rather than looking at each column's value in isolation.
   def validate_rows(&block)
-    raise 'Invalid block passed to Importer#validate_columns: block should accept a single Row argument' if block.arity != 1
+    raise 'Invalid block passed to Importer#validate_rows: block should accept a single Row argument' if block.arity != 1
     @row_validator = block
   end
   
@@ -679,9 +697,9 @@ class Importer
       end
     end
 
-    # We is good
+    # Add the row - may contain errors
     @data.rows << row
-    row
+    !has_errors?
   end
   
   def rows

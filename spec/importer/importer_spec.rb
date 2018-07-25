@@ -155,13 +155,8 @@ describe Importer do
     importer = Importer.build do
       column :foo
     end
+
     was_run = false
-
-    importer.on_error do
-      was_run = true
-    end
-    was_run.should be_false
-
     importer.add_error('An error')
     importer.on_error do
       was_run = true
@@ -175,11 +170,6 @@ describe Importer do
     end
 
     was_run = false
-    importer.on_success do
-      was_run = true
-    end
-    was_run.should be_false
-
     importer.import_string("foo\n1")
     importer.has_errors?.should be_false
     importer.on_success do
@@ -333,6 +323,35 @@ describe Importer do
     stream.pos.should == 0
     rows = Importer.read_lines(2, stream, :scope => 'Sheet 2')
     stream.pos.should == 0
+  end
+  
+  it 'should report an error when all rows are filtered' do
+    importer = Importer.build do
+      column :num, :type => :int
+      filter do |row|
+        row[:num] < 50
+      end
+    end
+
+    importer.import_string("num\n1\n2")
+    importer.error_summary.should be_nil
+    
+    importer.import_string("num\n100\n101")
+    importer.error_summary.should_not be_nil
+    importer.error_summary.should include('No unfiltered rows found')
+  end
+  
+  it 'should not report an error when all rows filtered but #allow_empty! set' do
+    importer = Importer.build do
+      allow_empty!
+      column :num, :type => :int
+      filter do |row|
+        row[:num] < 50
+      end
+    end
+    
+    importer.import_string("num\n100\n101")
+    importer.error_summary.should be_nil
   end
   
 end

@@ -29,14 +29,8 @@ class Importer
       data = nil
       if is_stream?(source)
         data = DataReader::for_stream(importer, source)
-        unless data
-          importer.add_error("Unable to find format handler for stream")
-        end
       else
         data = DataReader::for_path(importer, source)
-        unless data
-          importer.add_error("Unable to find format handler for file #{source}")
-        end
       end
       data
     end
